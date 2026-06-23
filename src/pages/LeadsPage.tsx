@@ -8,28 +8,36 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
-import { getAll, create, generateId, STORES, type Lead } from "@/lib/store";
+import { create, generateId, STORES, type Lead } from "@/lib/store";
+import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
 
+const emptyLead = (): Lead => ({
+  id: generateId(), data_entrada: new Date().toISOString().split("T")[0],
+  nome: "", cpf: "", telefone: "", email: "", canal_origem: "",
+  modalidade_interesse: "", turma_interesse: "", responsavel_atendimento: "",
+  status_lead: "NOVO", data_ultimo_contato: "", motivo_nao_conversao: "",
+  observacoes: "", converteu_em_aluno: false,
+});
+
 export default function LeadsPage() {
-  const [leads, setLeads] = useState(() => getAll<Lead>(STORES.LEADS));
+  const { data: leads, reload } = useTable<Lead>(STORES.LEADS);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<Lead>({
-    id: generateId(), data_entrada: new Date().toISOString().split("T")[0],
-    nome: "", cpf: "", telefone: "", email: "", canal_origem: "",
-    modalidade_interesse: "", turma_interesse: "", responsavel_atendimento: "",
-    status_lead: "NOVO", data_ultimo_contato: "", motivo_nao_conversao: "",
-    observacoes: "", converteu_em_aluno: false,
-  });
+  const [form, setForm] = useState<Lead>(emptyLead());
   const { toast } = useToast();
   const set = (k: keyof Lead, v: any) => setForm(prev => ({ ...prev, [k]: v }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.nome) { toast({ title: "Preencha o nome", variant: "destructive" }); return; }
-    create(STORES.LEADS, form);
-    setLeads(getAll(STORES.LEADS));
-    setOpen(false);
-    toast({ title: "Lead cadastrado!" });
+    try {
+      await create(STORES.LEADS, form);
+      await reload();
+      setOpen(false);
+      setForm(emptyLead());
+      toast({ title: "Lead cadastrado!" });
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e.message, variant: "destructive" });
+    }
   };
 
   return (
