@@ -8,31 +8,40 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
-import { getAll, create, generateId, STORES, type Matricula, type Aluno, type Modalidade, type Turma } from "@/lib/store";
+import { create, generateId, STORES, type Matricula, type Aluno, type Modalidade, type Turma } from "@/lib/store";
+import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
 
+const emptyMatricula = (): Matricula => ({
+  id: generateId(), id_aluno: "", id_modalidade: "", id_turma: "",
+  tipo_matricula: "NORMAL", data_inicio: new Date().toISOString().split("T")[0],
+  data_fim_prevista: "", status_matricula: "PENDENTE_LIBERACAO",
+  valor_final: 0, forma_pagamento: "", liberado_para_aula: false,
+  data_criacao: new Date().toISOString().split("T")[0], observacoes: "",
+});
+
 export default function MatriculasPage() {
-  const [matriculas, setMatriculas] = useState(() => getAll<Matricula>(STORES.MATRICULAS));
-  const alunos = getAll<Aluno>(STORES.ALUNOS);
-  const modalidades = getAll<Modalidade>(STORES.MODALIDADES);
-  const turmas = getAll<Turma>(STORES.TURMAS);
+  const { data: matriculas, reload } = useTable<Matricula>(STORES.MATRICULAS);
+  const { data: alunos } = useTable<Aluno>(STORES.ALUNOS);
+  const { data: modalidades } = useTable<Modalidade>(STORES.MODALIDADES);
+  const { data: turmas } = useTable<Turma>(STORES.TURMAS);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<Matricula>({
-    id: generateId(), id_aluno: "", id_modalidade: "", id_turma: "",
-    tipo_matricula: "NORMAL", data_inicio: new Date().toISOString().split("T")[0],
-    data_fim_prevista: "", status_matricula: "PENDENTE_LIBERACAO",
-    valor_final: 0, forma_pagamento: "", liberado_para_aula: false,
-    data_criacao: new Date().toISOString().split("T")[0], observacoes: "",
-  });
+  const [form, setForm] = useState<Matricula>(emptyMatricula());
   const { toast } = useToast();
   const set = (k: keyof Matricula, v: any) => setForm(prev => ({ ...prev, [k]: v }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.id_aluno) { toast({ title: "Selecione um aluno", variant: "destructive" }); return; }
-    create(STORES.MATRICULAS, form);
-    setMatriculas(getAll(STORES.MATRICULAS));
-    setOpen(false);
-    toast({ title: "Matrícula criada!" });
+    try {
+      const payload = { ...form, id_modalidade: form.id_modalidade || null as any, id_turma: form.id_turma || null as any };
+      await create(STORES.MATRICULAS, payload);
+      await reload();
+      setOpen(false);
+      setForm(emptyMatricula());
+      toast({ title: "Matrícula criada!" });
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e.message, variant: "destructive" });
+    }
   };
 
   return (
@@ -44,7 +53,7 @@ export default function MatriculasPage() {
         { key: "id_modalidade", label: "Modalidade", render: m => modalidades.find(mod => mod.id === m.id_modalidade)?.nome_modalidade || "—" },
         { key: "tipo_matricula", label: "Tipo" },
         { key: "data_inicio", label: "Início" },
-        { key: "valor_final", label: "Valor", render: m => `R$ ${m.valor_final.toFixed(2)}` },
+        { key: "valor_final", label: "Valor", render: m => `R$ ${Number(m.valor_final || 0).toFixed(2)}` },
         { key: "status_matricula", label: "Status", render: m => <StatusBadge status={m.status_matricula} /> },
       ]} />
       <Dialog open={open} onOpenChange={setOpen}>
