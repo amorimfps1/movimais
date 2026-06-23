@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
-import { getAll, create, generateId, STORES, type Aluno } from "@/lib/store";
+import { create, generateId, STORES, type Aluno } from "@/lib/store";
+import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
 
 const emptyAluno = (): Aluno => ({
