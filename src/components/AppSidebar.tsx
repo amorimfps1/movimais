@@ -3,27 +3,34 @@ import logo from "@/assets/logo.png";
 import {
   Users, UserPlus, GraduationCap, Calendar, Dumbbell,
   CreditCard, ClipboardCheck, BookOpen, LayoutDashboard,
-  UserCog, ChevronLeft, ChevronRight
+  UserCog, ChevronLeft, ChevronRight, Shield
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
-const menuItems = [
-  { label: "Dashboard", icon: LayoutDashboard, path: "/" },
-  { label: "Alunos", icon: Users, path: "/alunos" },
-  { label: "Leads", icon: UserPlus, path: "/leads" },
-  { label: "Matrículas", icon: GraduationCap, path: "/matriculas" },
-  { label: "Turmas", icon: Calendar, path: "/turmas" },
-  { label: "Modalidades", icon: Dumbbell, path: "/modalidades" },
-  { label: "Instrutores", icon: UserCog, path: "/instrutores" },
-  { label: "Pagamentos", icon: CreditCard, path: "/pagamentos" },
-  { label: "Presenças", icon: ClipboardCheck, path: "/presencas" },
-  { label: "Aulas", icon: BookOpen, path: "/aulas" },
-];
+const allItems = [
+  { label: "Dashboard", icon: LayoutDashboard, path: "/", roles: ["secretaria", "coordenacao", "instrutor"] },
+  { label: "Alunos", icon: Users, path: "/alunos", roles: ["secretaria", "coordenacao", "instrutor"] },
+  { label: "Leads", icon: UserPlus, path: "/leads", roles: ["secretaria", "coordenacao"] },
+  { label: "Matrículas", icon: GraduationCap, path: "/matriculas", roles: ["secretaria", "coordenacao", "instrutor"] },
+  { label: "Turmas", icon: Calendar, path: "/turmas", roles: ["secretaria", "coordenacao", "instrutor"] },
+  { label: "Modalidades", icon: Dumbbell, path: "/modalidades", roles: ["secretaria", "coordenacao", "instrutor"] },
+  { label: "Instrutores", icon: UserCog, path: "/instrutores", roles: ["secretaria", "coordenacao", "instrutor"] },
+  { label: "Pagamentos", icon: CreditCard, path: "/pagamentos", roles: ["secretaria", "coordenacao"] },
+  { label: "Presenças", icon: ClipboardCheck, path: "/presencas", roles: ["secretaria", "coordenacao", "instrutor"] },
+  { label: "Aulas", icon: BookOpen, path: "/aulas", roles: ["secretaria", "coordenacao", "instrutor"] },
+  { label: "Usuários", icon: Shield, path: "/usuarios", roles: ["secretaria"] },
+] as const;
 
 export default function AppSidebar() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const { roles } = useAuth();
+
+  const menuItems = allItems.filter((item) =>
+    roles.length === 0 ? false : item.roles.some((r) => roles.includes(r as any))
+  );
 
   return (
     <aside className={cn(
@@ -53,6 +60,11 @@ export default function AppSidebar() {
             </Link>
           );
         })}
+        {roles.length === 0 && !collapsed && (
+          <div className="px-4 py-3 mx-2 text-xs text-muted-foreground">
+            Aguardando atribuição de perfil pelo administrador.
+          </div>
+        )}
       </nav>
 
       <button
