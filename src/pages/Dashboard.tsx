@@ -1,14 +1,15 @@
-import { Users, UserPlus, GraduationCap, CreditCard, TrendingUp, AlertTriangle } from "lucide-react";
+import { Users, UserPlus, GraduationCap, TrendingUp, AlertTriangle } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import PageHeader from "@/components/PageHeader";
-import { getAll, STORES, type Aluno, type Lead, type Matricula, type Pagamento } from "@/lib/store";
+import { STORES, type Aluno, type Lead, type Matricula, type Pagamento } from "@/lib/store";
+import { useTable } from "@/hooks/useTable";
 import StatusBadge from "@/components/StatusBadge";
 
 export default function Dashboard() {
-  const alunos = getAll<Aluno>(STORES.ALUNOS);
-  const leads = getAll<Lead>(STORES.LEADS);
-  const matriculas = getAll<Matricula>(STORES.MATRICULAS);
-  const pagamentos = getAll<Pagamento>(STORES.PAGAMENTOS);
+  const { data: alunos } = useTable<Aluno>(STORES.ALUNOS);
+  const { data: leads } = useTable<Lead>(STORES.LEADS);
+  const { data: matriculas } = useTable<Matricula>(STORES.MATRICULAS);
+  const { data: pagamentos } = useTable<Pagamento>(STORES.PAGAMENTOS);
 
   const matriculasAtivas = matriculas.filter(m => m.status_matricula === "ATIVA").length;
   const pagamentosPendentes = pagamentos.filter(p => ["PENDENTE", "ATRASADO"].includes(p.status_pagamento)).length;
@@ -45,7 +46,7 @@ export default function Dashboard() {
             <p className="text-muted-foreground text-sm">Nenhuma matrícula registrada</p>
           ) : (
             <div className="space-y-3">
-              {matriculas.slice(-5).reverse().map(m => {
+              {matriculas.slice(0, 5).map(m => {
                 const aluno = alunos.find(a => a.id === m.id_aluno);
                 return (
                   <div key={m.id} className="flex items-center justify-between">
