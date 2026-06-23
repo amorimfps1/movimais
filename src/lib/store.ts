@@ -1,5 +1,7 @@
-// Simple localStorage-based store for all modules
+// Supabase-backed data store for MOVI+
+import { supabase } from "@/integrations/supabase/client";
 
+// ============ Types ============
 export interface Aluno {
   id: string;
   nome_completo: string;
@@ -111,63 +113,62 @@ export interface Presenca {
   tipo_registro: string;
 }
 
-function getStore<T>(key: string): T[] {
-  try {
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : [];
-  } catch { return []; }
-}
-
-function setStore<T>(key: string, data: T[]) {
-  localStorage.setItem(key, JSON.stringify(data));
-}
+// ============ Table names ============
+export const STORES = {
+  ALUNOS: "alunos",
+  LEADS: "leads",
+  MATRICULAS: "matriculas",
+  TURMAS: "turmas",
+  MODALIDADES: "modalidades",
+  INSTRUTORES: "instrutores",
+  PAGAMENTOS: "pagamentos",
+  PRESENCAS: "presencas",
+} as const;
 
 export function generateId() {
   return crypto.randomUUID().slice(0, 8).toUpperCase();
 }
 
-// Generic CRUD
-export function getAll<T>(key: string): T[] { return getStore<T>(key); }
-export function getById<T extends { id: string }>(key: string, id: string): T | undefined {
-  return getStore<T>(key).find(item => item.id === id);
-}
-export function create<T>(key: string, item: T) {
-  const items = getStore<T>(key);
-  items.push(item);
-  setStore(key, items);
-}
-export function update<T extends { id: string }>(key: string, item: T) {
-  const items = getStore<T>(key).map(i => (i as any).id === item.id ? item : i);
-  setStore(key, items);
-}
-export function remove(key: string, id: string) {
-  const items = getStore<any>(key).filter((i: any) => i.id !== id);
-  setStore(key, items);
+// ============ Generic CRUD (async) ============
+export async function getAll<T>(table: string): Promise<T[]> {
+  const { data, error } = await supabase.from(table as any).select("*").order("created_at", { ascending: false });
+  if (error) {
+    console.error(`[getAll ${table}]`, error);
+    return [];
+  }
+  return (data as T[]) || [];
 }
 
-// Store keys
-export const STORES = {
-  ALUNOS: 'movi_alunos',
-  LEADS: 'movi_leads',
-  MATRICULAS: 'movi_matriculas',
-  TURMAS: 'movi_turmas',
-  MODALIDADES: 'movi_modalidades',
-  INSTRUTORES: 'movi_instrutores',
-  PAGAMENTOS: 'movi_pagamentos',
-  PRESENCAS: 'movi_presencas',
-} as const;
+export async function getById<T>(table: string, id: string): Promise<T | undefined> {
+  const { data, error } = await supabase.from(table as any).select("*").eq("id", id).maybeSingle();
+  if (error) {
+    console.error(`[getById ${table}]`, error);
+    return undefined;
+  }
+  return (data as T) || undefined;
+}
 
-// Seed default modalidades
-export function seedDefaults() {
-  if (getAll(STORES.MODALIDADES).length === 0) {
-    const modalidades: Modalidade[] = [
-      { id: generateId(), nome_modalidade: 'Ballet', area: 'Dança', valor_padrao: 150, status: 'ATIVO' },
-      { id: generateId(), nome_modalidade: 'Judô', area: 'Artes Marciais', valor_padrao: 120, status: 'ATIVO' },
-      { id: generateId(), nome_modalidade: 'Desenho e Pintura', area: 'Artes', valor_padrao: 100, status: 'ATIVO' },
-      { id: generateId(), nome_modalidade: 'Yoga', area: 'Bem-Estar', valor_padrao: 130, status: 'ATIVO' },
-      { id: generateId(), nome_modalidade: 'Capoeira', area: 'Artes Marciais', valor_padrao: 110, status: 'ATIVO' },
-      { id: generateId(), nome_modalidade: 'Muay Thai', area: 'Artes Marciais', valor_padrao: 140, status: 'ATIVO' },
-    ];
-    setStore(STORES.MODALIDADES, modalidades);
+export async function create<T>(table: string, item: T): Promise<void> {
+  const { error } = await supabase.from(table as any).insert(item as any);
+  if (error) {
+    console.error(`[create ${table}]`, error);
+    throw error;
+  }
+}
+
+export async function update<T extends { id: string }>(table: string, item: T): Promise<void> {
+  const { id, ...rest } = item as any;
+  const { error } = await supabase.from(table as any).update(rest).eq("id", id);
+  if (error) {
+    console.error(`[update ${table}]`, error);
+    throw error;
+  }
+}
+
+export async function remove(table: string, id: string): Promise<void> {
+  const { error } = await supabase.from(table as any).delete().eq("id", id);
+  if (error) {
+    console.error(`[remove ${table}]`, error);
+    throw error;
   }
 }

@@ -8,25 +8,33 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Plus } from "lucide-react";
-import { getAll, create, generateId, STORES, type Instrutor } from "@/lib/store";
+import { create, generateId, STORES, type Instrutor } from "@/lib/store";
+import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
 
+const emptyInstrutor = (): Instrutor => ({
+  id: generateId(), nome_completo: "", cpf: "", telefone: "", email: "",
+  funcao: "INSTRUTOR_PRINCIPAL", ativo: true,
+});
+
 export default function InstrutoresPage() {
-  const [instrutores, setInstrutores] = useState(() => getAll<Instrutor>(STORES.INSTRUTORES));
+  const { data: instrutores, reload } = useTable<Instrutor>(STORES.INSTRUTORES);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<Instrutor>({
-    id: generateId(), nome_completo: "", cpf: "", telefone: "", email: "",
-    funcao: "INSTRUTOR_PRINCIPAL", ativo: true,
-  });
+  const [form, setForm] = useState<Instrutor>(emptyInstrutor());
   const { toast } = useToast();
   const set = (k: keyof Instrutor, v: any) => setForm(prev => ({ ...prev, [k]: v }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.nome_completo) { toast({ title: "Preencha o nome", variant: "destructive" }); return; }
-    create(STORES.INSTRUTORES, form);
-    setInstrutores(getAll(STORES.INSTRUTORES));
-    setOpen(false);
-    toast({ title: "Instrutor cadastrado!" });
+    try {
+      await create(STORES.INSTRUTORES, form);
+      await reload();
+      setOpen(false);
+      setForm(emptyInstrutor());
+      toast({ title: "Instrutor cadastrado!" });
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e.message, variant: "destructive" });
+    }
   };
 
   return (
@@ -37,7 +45,7 @@ export default function InstrutoresPage() {
         { key: "nome_completo", label: "Nome" },
         { key: "cpf", label: "CPF" },
         { key: "telefone", label: "Telefone" },
-        { key: "funcao", label: "Função", render: i => i.funcao.replace(/_/g, " ") },
+        { key: "funcao", label: "Função", render: i => (i.funcao || "").replace(/_/g, " ") },
         { key: "ativo", label: "Ativo", render: i => <span className={i.ativo ? "text-success" : "text-destructive"}>{i.ativo ? "Sim" : "Não"}</span> },
       ]} />
       <Dialog open={open} onOpenChange={setOpen}>
