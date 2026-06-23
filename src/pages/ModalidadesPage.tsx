@@ -7,23 +7,29 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
-import { getAll, create, generateId, STORES, type Modalidade } from "@/lib/store";
+import { create, generateId, STORES, type Modalidade } from "@/lib/store";
+import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function ModalidadesPage() {
-  const [modalidades, setModalidades] = useState(() => getAll<Modalidade>(STORES.MODALIDADES));
+  const { data: modalidades, reload } = useTable<Modalidade>(STORES.MODALIDADES);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Modalidade>({ id: generateId(), nome_modalidade: "", area: "", valor_padrao: 0, status: "ATIVO" });
   const { toast } = useToast();
   const set = (k: keyof Modalidade, v: any) => setForm(prev => ({ ...prev, [k]: v }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.nome_modalidade) { toast({ title: "Preencha o nome", variant: "destructive" }); return; }
-    create(STORES.MODALIDADES, form);
-    setModalidades(getAll(STORES.MODALIDADES));
-    setOpen(false);
-    toast({ title: "Modalidade criada!" });
+    try {
+      await create(STORES.MODALIDADES, form);
+      await reload();
+      setOpen(false);
+      setForm({ id: generateId(), nome_modalidade: "", area: "", valor_padrao: 0, status: "ATIVO" });
+      toast({ title: "Modalidade criada!" });
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e.message, variant: "destructive" });
+    }
   };
 
   return (
@@ -33,7 +39,7 @@ export default function ModalidadesPage() {
         { key: "id", label: "ID" },
         { key: "nome_modalidade", label: "Modalidade" },
         { key: "area", label: "Área" },
-        { key: "valor_padrao", label: "Valor Padrão", render: m => `R$ ${m.valor_padrao.toFixed(2)}` },
+        { key: "valor_padrao", label: "Valor Padrão", render: m => `R$ ${Number(m.valor_padrao || 0).toFixed(2)}` },
         { key: "status", label: "Status", render: m => <StatusBadge status={m.status} /> },
       ]} />
       <Dialog open={open} onOpenChange={setOpen}>
