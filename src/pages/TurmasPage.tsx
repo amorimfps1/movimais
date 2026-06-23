@@ -9,26 +9,35 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Plus } from "lucide-react";
-import { getAll, create, generateId, STORES, type Turma, type Modalidade } from "@/lib/store";
+import { create, generateId, STORES, type Turma, type Modalidade } from "@/lib/store";
+import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
 
+const emptyTurma = (): Turma => ({
+  id: generateId(), id_modalidade: "", nome_turma: "", faixa_etaria: "",
+  capacidade_maxima: 20, status_turma: "ATIVA", permite_experimental: true,
+});
+
 export default function TurmasPage() {
-  const [turmas, setTurmas] = useState(() => getAll<Turma>(STORES.TURMAS));
-  const modalidades = getAll<Modalidade>(STORES.MODALIDADES);
+  const { data: turmas, reload } = useTable<Turma>(STORES.TURMAS);
+  const { data: modalidades } = useTable<Modalidade>(STORES.MODALIDADES);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<Turma>({
-    id: generateId(), id_modalidade: "", nome_turma: "", faixa_etaria: "",
-    capacidade_maxima: 20, status_turma: "ATIVO", permite_experimental: true,
-  });
+  const [form, setForm] = useState<Turma>(emptyTurma());
   const { toast } = useToast();
   const set = (k: keyof Turma, v: any) => setForm(prev => ({ ...prev, [k]: v }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.nome_turma) { toast({ title: "Preencha o nome da turma", variant: "destructive" }); return; }
-    create(STORES.TURMAS, form);
-    setTurmas(getAll(STORES.TURMAS));
-    setOpen(false);
-    toast({ title: "Turma criada!" });
+    try {
+      const payload = { ...form, id_modalidade: form.id_modalidade || null as any };
+      await create(STORES.TURMAS, payload);
+      await reload();
+      setOpen(false);
+      setForm(emptyTurma());
+      toast({ title: "Turma criada!" });
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e.message, variant: "destructive" });
+    }
   };
 
   return (
