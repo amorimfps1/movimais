@@ -15,9 +15,6 @@ import PagamentosPage from "@/pages/PagamentosPage";
 import PresencasPage from "@/pages/PresencasPage";
 import AulasPage from "@/pages/AulasPage";
 import NotFound from "@/pages/NotFound";
-import { seedDefaults } from "@/lib/store";
-
-seedDefaults();
 
 const queryClient = new QueryClient();
 
