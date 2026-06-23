@@ -151,10 +151,29 @@ CREATE POLICY "open_all" ON public.pagamentos FOR ALL USING (true) WITH CHECK (t
 CREATE POLICY "open_all" ON public.presencas FOR ALL USING (true) WITH CHECK (true);
 
 -- Seed modalidades padrão
-INSERT INTO public.modalidades (id, nome_modalidade, area, valor_padrao, status) VALUES
-  ('BALLET01','Ballet','Dança',150,'ATIVO'),
-  ('JUDO0001','Judô','Artes Marciais',120,'ATIVO'),
+INSERT INTO public.modalidades (
+  id,
+  nome_modalidade,
+  area,
+  valor_padrao,
+  status
+) VALUES
+  ('PIL2X001','Pilates 2X','Bem-Estar',130,'ATIVO'),
+  ('GINRIT01','Ginástica Rítmica','Esportes',150,'ATIVO'),
   ('DESPIN01','Desenho e Pintura','Artes',100,'ATIVO'),
-  ('YOGA0001','Yoga','Bem-Estar',130,'ATIVO'),
+  ('KARATE01','Karatê','Artes Marciais',120,'ATIVO'),
+  ('BALLET01','Ballet','Dança',150,'ATIVO'),
+  ('KICKBOX1','Kickboxing','Artes Marciais',140,'ATIVO'),
+  ('JIUJITS1','Jiu-Jitsu','Artes Marciais',140,'ATIVO'),
+  ('TAEKWON1','Taekwondo','Artes Marciais',140,'ATIVO'),
   ('CAPOEIR1','Capoeira','Artes Marciais',110,'ATIVO'),
-  ('MUAYTH01','Muay Thai','Artes Marciais',140,'ATIVO');
+  ('YOGA0001','Yoga','Bem-Estar',130,'ATIVO'),
+  ('FUNCPWR1','Funcional Power','Fitness',140,'ATIVO'),
+  ('TEATRO01','Teatro','Artes',120,'ATIVO'),
+  ('CANTO001','Canto','Artes',120,'ATIVO'),
+  ('PWRJUMP1','PowerJump','Fitness',140,'ATIVO'),
+  ('BODYPMP1','BodyPump','Fitness',140,'ATIVO'),
+  ('TAICHI01','TaiChiChuan','Bem-Estar',130,'ATIVO'),
+  ('PIL3X001','Pilates 3X','Bem-Estar',180,'ATIVO'),
+  ('CROCHE01','Crochê','Artesanato',90,'ATIVO'),
+  ('TRICO001','Tricô','Artesanato',90,'ATIVO');
