@@ -23,21 +23,25 @@ const emptyAluno = (): Aluno => ({
 });
 
 export default function AlunosPage() {
-  const [alunos, setAlunos] = useState(() => getAll<Aluno>(STORES.ALUNOS));
+  const { data: alunos, reload } = useTable<Aluno>(STORES.ALUNOS);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Aluno>(emptyAluno());
   const { toast } = useToast();
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.nome_completo || !form.cpf) {
       toast({ title: "Preencha nome e CPF", variant: "destructive" });
       return;
     }
-    create(STORES.ALUNOS, form);
-    setAlunos(getAll(STORES.ALUNOS));
-    setOpen(false);
-    setForm(emptyAluno());
-    toast({ title: "Aluno cadastrado com sucesso!" });
+    try {
+      await create(STORES.ALUNOS, form);
+      await reload();
+      setOpen(false);
+      setForm(emptyAluno());
+      toast({ title: "Aluno cadastrado com sucesso!" });
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e.message, variant: "destructive" });
+    }
   };
 
   const set = (key: keyof Aluno, value: any) => setForm(prev => ({ ...prev, [key]: value }));
