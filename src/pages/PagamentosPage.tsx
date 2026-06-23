@@ -8,28 +8,43 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
-import { getAll, create, generateId, STORES, type Pagamento, type Aluno, type Matricula } from "@/lib/store";
+import { create, generateId, STORES, type Pagamento, type Aluno, type Matricula } from "@/lib/store";
+import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
 
+const emptyPagamento = (): Pagamento => ({
+  id: generateId(), id_matricula: "", id_aluno: "", tipo_lancamento: "MENSALIDADE",
+  mes_referencia: new Date().getMonth() + 1, ano_referencia: new Date().getFullYear(),
+  data_vencimento: "", valor_previsto: 0, valor_pago: 0, data_pagamento: "",
+  status_pagamento: "PREVISTO", forma_pagamento: "",
+});
+
 export default function PagamentosPage() {
-  const [pagamentos, setPagamentos] = useState(() => getAll<Pagamento>(STORES.PAGAMENTOS));
-  const alunos = getAll<Aluno>(STORES.ALUNOS);
-  const matriculas = getAll<Matricula>(STORES.MATRICULAS);
+  const { data: pagamentos, reload } = useTable<Pagamento>(STORES.PAGAMENTOS);
+  const { data: alunos } = useTable<Aluno>(STORES.ALUNOS);
+  const { data: matriculas } = useTable<Matricula>(STORES.MATRICULAS);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<Pagamento>({
-    id: generateId(), id_matricula: "", id_aluno: "", tipo_lancamento: "MENSALIDADE",
-    mes_referencia: new Date().getMonth() + 1, ano_referencia: new Date().getFullYear(),
-    data_vencimento: "", valor_previsto: 0, valor_pago: 0, data_pagamento: "",
-    status_pagamento: "PREVISTO", forma_pagamento: "",
-  });
+  const [form, setForm] = useState<Pagamento>(emptyPagamento());
   const { toast } = useToast();
   const set = (k: keyof Pagamento, v: any) => setForm(prev => ({ ...prev, [k]: v }));
 
-  const handleSave = () => {
-    create(STORES.PAGAMENTOS, form);
-    setPagamentos(getAll(STORES.PAGAMENTOS));
-    setOpen(false);
-    toast({ title: "Pagamento registrado!" });
+  const handleSave = async () => {
+    try {
+      const payload = {
+        ...form,
+        id_aluno: form.id_aluno || null as any,
+        id_matricula: form.id_matricula || null as any,
+        data_vencimento: form.data_vencimento || null as any,
+        data_pagamento: form.data_pagamento || null as any,
+      };
+      await create(STORES.PAGAMENTOS, payload);
+      await reload();
+      setOpen(false);
+      setForm(emptyPagamento());
+      toast({ title: "Pagamento registrado!" });
+    } catch (e: any) {
+      toast({ title: "Erro ao salvar", description: e.message, variant: "destructive" });
+    }
   };
 
   return (
@@ -37,11 +52,11 @@ export default function PagamentosPage() {
       <PageHeader title="Pagamentos" description="Controle financeiro" action={<Button onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-2" />Novo Pagamento</Button>} />
       <DataTable data={pagamentos} searchKeys={["id_aluno"]} columns={[
         { key: "id", label: "ID" },
-        { key: "id_aluno", label: "Aluno", render: p => alunos.find(a => a.id === p.id_aluno)?.nome_completo || p.id_aluno },
+        { key: "id_aluno", label: "Aluno", render: p => alunos.find(a => a.id === p.id_aluno)?.nome_completo || p.id_aluno || "—" },
         { key: "tipo_lancamento", label: "Tipo" },
         { key: "data_vencimento", label: "Vencimento" },
-        { key: "valor_previsto", label: "Previsto", render: p => `R$ ${p.valor_previsto.toFixed(2)}` },
-        { key: "valor_pago", label: "Pago", render: p => `R$ ${p.valor_pago.toFixed(2)}` },
+        { key: "valor_previsto", label: "Previsto", render: p => `R$ ${Number(p.valor_previsto || 0).toFixed(2)}` },
+        { key: "valor_pago", label: "Pago", render: p => `R$ ${Number(p.valor_pago || 0).toFixed(2)}` },
         { key: "status_pagamento", label: "Status", render: p => <StatusBadge status={p.status_pagamento} /> },
       ]} />
       <Dialog open={open} onOpenChange={setOpen}>
@@ -52,6 +67,12 @@ export default function PagamentosPage() {
               <Select value={form.id_aluno} onValueChange={v => set("id_aluno", v)}>
                 <SelectTrigger className="bg-background border-border"><SelectValue placeholder="Selecione" /></SelectTrigger>
                 <SelectContent>{alunos.map(a => <SelectItem key={a.id} value={a.id}>{a.nome_completo}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Matrícula</Label>
+              <Select value={form.id_matricula} onValueChange={v => set("id_matricula", v)}>
+                <SelectTrigger className="bg-background border-border"><SelectValue placeholder="Opcional" /></SelectTrigger>
+                <SelectContent>{matriculas.map(m => <SelectItem key={m.id} value={m.id}>{m.id}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div><Label>Tipo</Label>
