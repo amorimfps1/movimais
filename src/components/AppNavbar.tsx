@@ -1,10 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import MoviLogo from "./MoviLogo";
 import {
   Users, UserPlus, GraduationCap, Calendar, Dumbbell,
   CreditCard, ClipboardCheck, BookOpen, LayoutDashboard,
-  UserCog, Shield, LogOut, Menu, X, ChevronDown, Clock
+  UserCog, Shield, LogOut, Menu, X, ChevronDown, Clock,
+  ChevronLeft, ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -20,17 +21,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const allItems = [
-  { label: "Dashboard", icon: LayoutDashboard, path: "/", roles: ["secretaria", "coordenacao", "instrutor"] },
-  { label: "Alunos", icon: Users, path: "/alunos", roles: ["secretaria", "coordenacao", "instrutor"] },
+  { label: "Dashboard", icon: LayoutDashboard, path: "/", roles: ["coordenacao", "secretaria"] },
+  { label: "Alunos", icon: Users, path: "/alunos", roles: ["secretaria", "coordenacao"] },
   { label: "Leads", icon: UserPlus, path: "/leads", roles: ["secretaria", "coordenacao"] },
-  { label: "Matrículas", icon: GraduationCap, path: "/matriculas", roles: ["secretaria", "coordenacao", "instrutor"] },
+  { label: "Matrículas", icon: GraduationCap, path: "/matriculas", roles: ["secretaria", "coordenacao"] },
   { label: "Turmas", icon: Calendar, path: "/turmas", roles: ["secretaria", "coordenacao", "instrutor"] },
   { label: "Modalidades", icon: Dumbbell, path: "/modalidades", roles: ["secretaria", "coordenacao", "instrutor"] },
-  { label: "Instrutores", icon: UserCog, path: "/instrutores", roles: ["secretaria", "coordenacao", "instrutor"] },
+  { label: "Instrutores", icon: UserCog, path: "/instrutores", roles: ["secretaria", "coordenacao"] },
   { label: "Pagamentos", icon: CreditCard, path: "/pagamentos", roles: ["secretaria", "coordenacao"] },
   { label: "Presenças", icon: ClipboardCheck, path: "/presencas", roles: ["secretaria", "coordenacao", "instrutor"] },
   { label: "Aulas", icon: BookOpen, path: "/aulas", roles: ["secretaria", "coordenacao", "instrutor"] },
-  { label: "Usuários & Aprovações", icon: Shield, path: "/usuarios", roles: ["secretaria", "coordenacao"] },
+  { label: "Usuários e Aprovações", icon: Shield, path: "/usuarios", roles: ["secretaria", "coordenacao"] },
 ] as const;
 
 export default function AppNavbar() {
@@ -38,6 +39,52 @@ export default function AppNavbar() {
   const { user, roles, signOut, isAdmin } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number>(0);
+
+  const navRef = useRef<HTMLElement>(null);
+  const [hasOverflow, setHasOverflow] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkScroll = () => {
+    if (!navRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = navRef.current;
+    const maxScroll = Math.max(0, scrollWidth - clientWidth);
+    const overflowing = scrollWidth > clientWidth + 4;
+    setHasOverflow(overflowing);
+    setCanScrollLeft(overflowing && scrollLeft > 4);
+    setCanScrollRight(overflowing && scrollLeft < maxScroll - 4);
+  };
+
+  const scroll = (direction: "left" | "right") => {
+    if (!navRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = navRef.current;
+    const maxScroll = Math.max(0, scrollWidth - clientWidth);
+    if (maxScroll <= 0) return;
+
+    const step = 240;
+    let target: number;
+
+    if (direction === "right") {
+      target = scrollLeft + step;
+      // Se estiver próximo do final (dentro de margem de 35px), crava exatamente no fim
+      if (target >= maxScroll - 35) {
+        target = maxScroll;
+      }
+    } else {
+      target = scrollLeft - step;
+      // Se estiver próximo do início, crava exatamente em 0
+      if (target <= 35) {
+        target = 0;
+      }
+    }
+
+    navRef.current.scrollTo({
+      left: Math.max(0, Math.min(target, maxScroll)),
+      behavior: "smooth",
+    });
+
+    setTimeout(checkScroll, 320);
+  };
 
   // Monitorar quantidade de cadastros pendentes para coordenadores e secretaria
   useEffect(() => {
@@ -70,6 +117,26 @@ export default function AppNavbar() {
     roles.length === 0 ? false : item.roles.some((r) => roles.includes(r as any))
   );
 
+  useEffect(() => {
+    checkScroll();
+    const timeout = setTimeout(checkScroll, 100);
+    window.addEventListener("resize", checkScroll);
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener("resize", checkScroll);
+    };
+  }, [menuItems]);
+
+  // Centralizar a aba ativa automaticamente ao navegar
+  useEffect(() => {
+    if (!navRef.current) return;
+    const activeEl = navRef.current.querySelector<HTMLElement>('[data-active="true"]');
+    if (activeEl) {
+      activeEl.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    }
+    setTimeout(checkScroll, 350);
+  }, [location.pathname]);
+
   const userInitial = user?.email ? user.email.charAt(0).toUpperCase() : "U";
 
   return (
@@ -90,43 +157,92 @@ export default function AppNavbar() {
             </div>
           </Link>
 
-          {/* Abas de Navegação Superior (Desktop & Tablet) */}
-          <nav className="hidden lg:flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-2 px-1 flex-1 justify-center max-w-5xl">
-            {menuItems.map((item) => {
-              const isActive = location.pathname === item.path;
-              const Icon = item.icon;
-              const isUserApprovals = item.path === "/usuarios";
-              const showBadge = isUserApprovals && pendingApprovalsCount > 0;
-
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  className={cn(
-                    "relative flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium tracking-wide transition-all duration-200 whitespace-nowrap select-none",
-                    isActive
-                      ? "bg-primary/15 text-primary border border-primary/30 shadow-[0_0_16px_rgba(220,38,38,0.15)] font-semibold"
-                      : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-transparent"
-                  )}
-                >
-                  <Icon className={cn("w-4 h-4 shrink-0 transition-transform duration-200", isActive ? "text-primary scale-110" : "text-muted-foreground group-hover:text-foreground")} />
-                  <span>{item.label}</span>
-
-                  {showBadge && (
-                    <span className="ml-1 px-1.5 py-0.2 bg-amber-500 text-black text-[10px] font-bold rounded-full animate-pulse shadow-sm shadow-amber-500/50">
-                      {pendingApprovalsCount}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-
-            {roles.length === 0 && (
-              <span className="text-xs text-muted-foreground italic px-3 py-1.5 rounded-lg border border-dashed border-white/10 bg-background/40">
-                Aguardando perfil de acesso...
-              </span>
+          {/* Container com Abas e Setas de Navegação */}
+          <div className="hidden lg:flex items-center flex-1 min-w-0 max-w-5xl justify-center gap-1.5 px-1">
+            {/* Seta para a Esquerda (Exibida somente se houver overflow) */}
+            {hasOverflow && (
+              <button
+                type="button"
+                onClick={() => scroll("left")}
+                disabled={!canScrollLeft}
+                className={cn(
+                  "shrink-0 w-8 h-8 rounded-xl border flex items-center justify-center transition-all duration-200 shadow-sm select-none",
+                  canScrollLeft
+                    ? "bg-white/5 hover:bg-white/15 border-white/10 hover:border-white/20 text-foreground cursor-pointer active:scale-95 hover:shadow-md"
+                    : "bg-white/[0.02] border-white/5 text-muted-foreground/30 cursor-not-allowed opacity-40"
+                )}
+                title="Rolar abas para a esquerda"
+                aria-label="Rolar para a esquerda"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
             )}
-          </nav>
+
+            {/* Abas de Navegação Superior */}
+            <nav
+              ref={navRef}
+              onScroll={checkScroll}
+              className={cn(
+                "flex items-center gap-1.5 overflow-x-auto scroll-smooth py-2 min-w-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden px-1",
+                hasOverflow ? "flex-1 justify-start" : "justify-center"
+              )}
+            >
+              {menuItems.map((item) => {
+                const isActive = location.pathname === item.path;
+                const Icon = item.icon;
+                const isUserApprovals = item.path === "/usuarios";
+                const showBadge = isUserApprovals && pendingApprovalsCount > 0;
+
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    data-active={isActive ? "true" : undefined}
+                    className={cn(
+                      "relative flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium tracking-wide transition-all duration-200 whitespace-nowrap select-none shrink-0",
+                      isActive
+                        ? "bg-primary/15 text-primary border border-primary/30 shadow-[0_0_16px_rgba(220,38,38,0.15)] font-semibold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-transparent"
+                    )}
+                  >
+                    <Icon className={cn("w-4 h-4 shrink-0 transition-transform duration-200", isActive ? "text-primary scale-110" : "text-muted-foreground group-hover:text-foreground")} />
+                    <span>{item.label}</span>
+
+                    {showBadge && (
+                      <span className="ml-1 px-1.5 py-0.2 bg-amber-500 text-black text-[10px] font-bold rounded-full animate-pulse shadow-sm shadow-amber-500/50">
+                        {pendingApprovalsCount}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+
+              {roles.length === 0 && (
+                <span className="text-xs text-muted-foreground italic px-3 py-1.5 rounded-lg border border-dashed border-white/10 bg-background/40 shrink-0">
+                  Aguardando perfil de acesso...
+                </span>
+              )}
+            </nav>
+
+            {/* Seta para a Direita (Exibida somente se houver overflow) */}
+            {hasOverflow && (
+              <button
+                type="button"
+                onClick={() => scroll("right")}
+                disabled={!canScrollRight}
+                className={cn(
+                  "shrink-0 w-8 h-8 rounded-xl border flex items-center justify-center transition-all duration-200 shadow-sm select-none",
+                  canScrollRight
+                    ? "bg-white/5 hover:bg-white/15 border-white/10 hover:border-white/20 text-foreground cursor-pointer active:scale-95 hover:shadow-md"
+                    : "bg-white/[0.02] border-white/5 text-muted-foreground/30 cursor-not-allowed opacity-40"
+                )}
+                title="Rolar abas para a direita"
+                aria-label="Rolar para a direita"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            )}
+          </div>
 
           {/* Perfil do Usuário & Ações */}
           <div className="flex items-center gap-3 shrink-0">

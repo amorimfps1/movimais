@@ -33,19 +33,20 @@ const App = () => (
             <Route path="/auth" element={<AuthPage />} />
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/alunos" element={<AlunosPage />} />
-                <Route path="/matriculas" element={<MatriculasPage />} />
                 <Route path="/turmas" element={<TurmasPage />} />
-                <Route path="/modalidades" element={<ModalidadesPage />} />
-                <Route path="/instrutores" element={<InstrutoresPage />} />
+                <Route path="/modalidades" element={<ModalidadesPage />} /> 
                 <Route path="/presencas" element={<PresencasPage />} />
                 <Route path="/aulas" element={<AulasPage />} />
+                <Route path="/" element={<PresencasPage />} />
 
                 {/* Rotas restritas para Secretaria e Coordenação */}
                 <Route element={<ProtectedRoute requireRoles={["secretaria", "coordenacao"]} />}>
                   <Route path="/leads" element={<LeadsPage />} />
                   <Route path="/pagamentos" element={<PagamentosPage />} />
+                  <Route path="/alunos" element={<AlunosPage />} />
+                  <Route path="/instrutores" element={<InstrutoresPage />} />
+                  <Route path="/matriculas" element={<MatriculasPage />} />
+                  <Route path="/" element={<Dashboard />} />
                 </Route>
 
                 {/* Gestão de Acessos e Usuários */}
