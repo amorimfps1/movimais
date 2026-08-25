@@ -20,7 +20,7 @@ const allItems = [
   { label: "Pagamentos", icon: CreditCard, path: "/pagamentos", roles: ["secretaria", "coordenacao"] },
   { label: "Presenças", icon: ClipboardCheck, path: "/presencas", roles: ["secretaria", "coordenacao", "instrutor"] },
   { label: "Aulas", icon: BookOpen, path: "/aulas", roles: ["secretaria", "coordenacao", "instrutor"] },
-  { label: "Usuários", icon: Shield, path: "/usuarios", roles: ["secretaria"] },
+  { label: "Usuários", icon: Shield, path: "/usuarios", roles: ["secretaria", "coordenacao"] },
 ] as const;
 
 export default function AppSidebar() {
@@ -34,14 +34,14 @@ export default function AppSidebar() {
 
   return (
     <aside className={cn(
-      "fixed left-0 top-0 h-screen bg-sidebar border-r border-sidebar-border flex flex-col transition-all duration-300 z-50",
-      collapsed ? "w-16" : "w-60"
+      "fixed left-0 top-0 h-screen bg-card border-r border-white/5 flex flex-col transition-all duration-500 ease-out z-50",
+      collapsed ? "w-16" : "w-60 md:w-64"
     )}>
-      <div className="p-4 flex items-center justify-center border-b border-sidebar-border">
-        <img src={logo} alt="MOVI+" className={cn("transition-all", collapsed ? "w-8" : "w-32")} />
+      <div className="h-20 flex items-center justify-center border-b border-white/5 shrink-0 px-4">
+        <img src={logo} alt="MOVI+" className={cn("transition-all duration-500", collapsed ? "w-8 opacity-70" : "w-28 opacity-90")} />
       </div>
 
-      <nav className="flex-1 py-4 overflow-y-auto">
+      <nav className="flex-1 py-6 overflow-y-auto px-3 space-y-1 custom-scrollbar">
         {menuItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
@@ -49,19 +49,19 @@ export default function AppSidebar() {
               key={item.path}
               to={item.path}
               className={cn(
-                "flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg text-sm font-medium transition-all",
+                "group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-300",
                 isActive
-                  ? "bg-primary/15 text-primary border-l-2 border-primary"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
               )}
             >
-              <item.icon className="w-5 h-5 shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              <item.icon className={cn("w-5 h-5 shrink-0 transition-transform duration-300 group-hover:scale-110", isActive && "text-primary")} />
+              {!collapsed && <span className="tracking-wide">{item.label}</span>}
             </Link>
           );
         })}
         {roles.length === 0 && !collapsed && (
-          <div className="px-4 py-3 mx-2 text-xs text-muted-foreground">
+          <div className="px-4 py-4 mx-2 text-xs text-muted-foreground italic border border-white/5 rounded-lg bg-background/50">
             Aguardando atribuição de perfil pelo administrador.
           </div>
         )}
@@ -69,9 +69,9 @@ export default function AppSidebar() {
 
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="p-3 border-t border-sidebar-border text-muted-foreground hover:text-foreground transition-colors"
+        className="h-14 border-t border-white/5 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors shrink-0"
       >
-        {collapsed ? <ChevronRight className="w-5 h-5 mx-auto" /> : <ChevronLeft className="w-5 h-5 mx-auto" />}
+        {collapsed ? <ChevronRight className="w-5 h-5" /> : <ChevronLeft className="w-5 h-5" />}
       </button>
     </aside>
   );

@@ -399,24 +399,36 @@ export type Database = {
       }
       profiles: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           email: string
           id: string
           nome: string | null
+          rejection_reason: string | null
+          status: Database["public"]["Enums"]["user_status"] | null
           updated_at: string
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           email: string
           id: string
           nome?: string | null
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["user_status"] | null
           updated_at?: string
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           email?: string
           id?: string
           nome?: string | null
+          rejection_reason?: string | null
+          status?: Database["public"]["Enums"]["user_status"] | null
           updated_at?: string
         }
         Relationships: []
@@ -488,6 +500,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      approve_user: {
+        Args: {
+          _approver_id: string
+          _assigned_role: Database["public"]["Enums"]["app_role"]
+          _target_user_id: string
+        }
+        Returns: Json
+      }
+      reject_user: {
+        Args: {
+          _approver_id: string
+          _reason: string
+          _target_user_id: string
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -499,6 +527,7 @@ export type Database = {
     }
     Enums: {
       app_role: "secretaria" | "coordenacao" | "instrutor"
+      user_status: "pendente" | "aprovado" | "rejeitado"
     }
     CompositeTypes: {
       [_ in never]: never

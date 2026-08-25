@@ -41,13 +41,15 @@ const App = () => (
                 <Route path="/instrutores" element={<InstrutoresPage />} />
                 <Route path="/presencas" element={<PresencasPage />} />
                 <Route path="/aulas" element={<AulasPage />} />
+
+                {/* Rotas restritas para Secretaria e Coordenação */}
                 <Route element={<ProtectedRoute requireRoles={["secretaria", "coordenacao"]} />}>
                   <Route path="/leads" element={<LeadsPage />} />
                   <Route path="/pagamentos" element={<PagamentosPage />} />
                 </Route>
-                <Route element={<ProtectedRoute requireAdmin />}>
-                  <Route path="/usuarios" element={<UsuariosPage />} />
-                </Route>
+
+                {/* Gestão de Acessos e Usuários */}
+                <Route path="/usuarios" element={<ProtectedRoute requireAdmin><UsuariosPage /></ProtectedRoute>} />
               </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
