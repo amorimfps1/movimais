@@ -18,6 +18,7 @@ import { generateId, STORES, type Turma, type Instrutor, type Modalidade } from 
 import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { formatDateToBR } from "@/lib/utils";
 
 const DIAS_SEMANA_ORDEM = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 
@@ -467,7 +468,7 @@ export default function AulasPage() {
                 render: a => (
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-primary shrink-0" />
-                    <span className="font-semibold text-foreground">{a.data_aula || "—"}</span>
+                    <span className="font-semibold text-foreground">{formatDateToBR(a.data_aula)}</span>
                   </div>
                 ),
               },
@@ -514,8 +515,13 @@ export default function AulasPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg bg-card/95 backdrop-blur-2xl border-white/10 rounded-2xl p-6">
           <DialogHeader>
-            <DialogTitle className="text-lg font-semibold">
-              {editingItem ? "Editar Aula" : "Agendar Aula Extra / Reposição"}
+            <DialogTitle className="text-lg font-semibold flex items-center justify-between">
+              <span>{editingItem ? "Editar Aula" : "Agendar Aula Extra / Reposição"}</span>
+              {form.data_aula && (
+                <span className="text-xs font-normal text-muted-foreground bg-white/5 px-2.5 py-1 rounded-lg border border-white/10 font-mono">
+                  {formatDateToBR(form.data_aula)}
+                </span>
+              )}
             </DialogTitle>
           </DialogHeader>
 
@@ -531,7 +537,12 @@ export default function AulasPage() {
             </div>
 
             <div>
-              <Label className="text-xs">Data da Aula *</Label>
+              <div className="flex items-center justify-between mb-1">
+                <Label className="text-xs">Data da Aula *</Label>
+                {form.data_aula && (
+                  <span className="text-[10px] text-muted-foreground font-mono">{formatDateToBR(form.data_aula)}</span>
+                )}
+              </div>
               <Input type="date" value={form.data_aula} onChange={e => set("data_aula", e.target.value)} className="bg-background/60 border-white/10 rounded-xl" />
             </div>
 

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -15,6 +15,7 @@ import StatusBadge from "@/components/StatusBadge";
 import { Button } from "@/components/ui/button";
 import { STORES, type Aluno, type Lead, type Matricula, type Pagamento } from "@/lib/store";
 import { useTable } from "@/hooks/useTable";
+import { formatDateToBR } from "@/lib/utils";
 
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
@@ -30,11 +31,12 @@ const COLORS = {
 
 const PIE_COLORS = [COLORS.success, COLORS.warning, COLORS.destructive, COLORS.info, COLORS.purple, COLORS.primary];
 
-// Custom Tooltip com fundo escuro e textos 100% brancos para garantir legibilidade máxima
+// Custom Tooltip com fundo escuro e textos 100% brancos com exibição de data no formato DD/MM/YYYY
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload || !payload.length) return null;
 
-  const title = payload[0]?.payload?.labelCompleto || label;
+  const rawTitle = payload[0]?.payload?.labelCompleto || payload[0]?.payload?.data || label;
+  const title = formatDateToBR(rawTitle) || rawTitle;
 
   return (
     <div className="bg-zinc-950/95 border border-white/20 rounded-xl p-3 shadow-2xl backdrop-blur-xl text-xs space-y-1.5 min-w-[150px]">
@@ -92,7 +94,7 @@ export default function Dashboard() {
   const [periodo, setPeriodo] = useState<"6m" | "ano">("6m");
 
   // --- Extração robusta de mês, ano, status e valores de Pagamento ---
-  const parsePayment = (p: Pagamento) => {
+  const parsePayment = useCallback((p: Pagamento) => {
     let mes = p.mes_referencia != null ? Number(p.mes_referencia) : NaN;
     let ano = p.ano_referencia != null ? Number(p.ano_referencia) : NaN;
 
@@ -119,32 +121,33 @@ export default function Dashboard() {
       status,
       isPago,
       isValido,
-      // Se está pago mas valor_pago veio 0/nulo, utiliza valor_previsto
       valorPago: isPago ? (valorPagoNum || valorPrevistoNum || 0) : 0,
       valorPrevisto: valorPrevistoNum || valorPagoNum || 0,
     };
-  };
+  }, []);
 
-  // --- KPIs Principais ---
-  const matriculasAtivas = matriculas.filter(m => m.status_matricula === "ATIVA").length;
+  // --- KPIs Principais (Memoizados) ---
+  const matriculasAtivas = useMemo(() => {
+    return matriculas.filter(m => m.status_matricula === "ATIVA").length;
+  }, [matriculas]);
 
   const pagamentosPendentes = useMemo(() => {
     return pagamentos.filter(p => {
       const { status } = parsePayment(p);
       return status === "PENDENTE" || status === "ATRASADO" || status === "PREVISTO";
     }).length;
-  }, [pagamentos]);
+  }, [pagamentos, parsePayment]);
 
   const receitaTotal = useMemo(() => {
     return pagamentos.reduce((acc, p) => {
       const info = parsePayment(p);
       return acc + info.valorPago;
     }, 0);
-  }, [pagamentos]);
+  }, [pagamentos, parsePayment]);
 
   const inadimplentes = useMemo(() => {
     return pagamentos.filter(p => parsePayment(p).status === "ATRASADO").length;
-  }, [pagamentos]);
+  }, [pagamentos, parsePayment]);
 
   const novosAlunosMes = useMemo(() => {
     const now = new Date();
@@ -160,16 +163,23 @@ export default function Dashboard() {
     if (total === 0) return 100;
     const pagos = pagamentos.filter(p => parsePayment(p).isPago).length;
     return Math.round((pagos / total) * 100);
-  }, [pagamentos]);
+  }, [pagamentos, parsePayment]);
 
-  // Âncora de data para o gráfico de receita (usa mês atual se houver dados ou o mais recente presente no banco)
+  const pagamentosLiquidadosCount = useMemo(() => {
+    return pagamentos.filter(p => parsePayment(p).isPago).length;
+  }, [pagamentos, parsePayment]);
+
+  const leadsAguardandoCount = useMemo(() => {
+    return leads.filter(l => l.status_lead === "NOVO").length;
+  }, [leads]);
+
+  // Âncora de data para o gráfico de receita (memoizada)
   const refDateReceita = useMemo(() => {
     const now = new Date();
     let maxAno = 0;
     let maxMes = 0;
     let temAnoAtual = false;
 
-    // Checa pagamentos
     if (pagamentos && pagamentos.length > 0) {
       for (const p of pagamentos) {
         const { mes, ano, isValido } = parsePayment(p);
@@ -185,7 +195,6 @@ export default function Dashboard() {
       }
     }
 
-    // Checa matrículas
     if (matriculas && matriculas.length > 0) {
       for (const m of matriculas) {
         if (m.data_inicio) {
@@ -210,9 +219,9 @@ export default function Dashboard() {
     }
 
     return new Date(maxAno, maxMes - 1, 1);
-  }, [pagamentos, matriculas]);
+  }, [pagamentos, matriculas, parsePayment]);
 
-  // --- Gráfico 1: Receita por Mês ---
+  // --- Gráfico 1: Receita por Mês (Memoizado com datas DD/MM/YYYY) ---
   const receitaPorMes = useMemo(() => {
     const mesesQtd = periodo === "6m" ? 6 : 12;
     return Array.from({ length: mesesQtd }, (_, i) => {
@@ -223,7 +232,6 @@ export default function Dashboard() {
       let recebido = 0;
       let previsto = 0;
 
-      // 1. Pagamentos específicos lançados para o mês
       pagamentos.forEach(p => {
         const info = parsePayment(p);
         if (info.mes === mes + 1 && info.ano === ano) {
@@ -236,7 +244,6 @@ export default function Dashboard() {
         }
       });
 
-      // 2. Receita prevista calculada com base nas matrículas ativas no período
       const previstoMatriculas = matriculas
         .filter(m => {
           if (m.status_matricula !== "ATIVA" && m.status_matricula !== "PENDENTE_LIBERACAO") return false;
@@ -254,19 +261,18 @@ export default function Dashboard() {
         })
         .reduce((s, m) => s + (Number(m.valor_final) || 0), 0);
 
-      // Se houver pagamentos ou matrículas ativas, considera o valor real esperado
       previsto = Math.max(previsto, previstoMatriculas);
 
       return {
         mes: MESES[mes],
-        labelCompleto: `${MESES[mes]} de ${ano}`,
+        labelCompleto: formatDateToBR(d) || `${MESES[mes]} de ${ano}`,
         recebido,
         previsto,
       };
     });
-  }, [pagamentos, matriculas, periodo, refDateReceita]);
+  }, [pagamentos, matriculas, periodo, refDateReceita, parsePayment]);
 
-  // --- Gráfico 2: Status de Matrículas (Donut) ---
+  // --- Gráfico 2: Status de Matrículas (Donut memoizado) ---
   const statusMatriculas = useMemo(() => {
     const counts: Record<string, number> = {};
     matriculas.forEach(m => {
@@ -276,7 +282,7 @@ export default function Dashboard() {
     return Object.entries(counts).map(([name, value]) => ({ name: name.replace(/_/g, " "), value }));
   }, [matriculas]);
 
-  // --- Gráfico 4: Evolução de Novos Alunos ---
+  // --- Gráfico 3: Evolução de Novos Alunos (Memoizado com datas DD/MM/YYYY) ---
   const alunosPorMes = useMemo(() => {
     let refDate = new Date();
     if (alunos.length > 0) {
@@ -310,14 +316,25 @@ export default function Dashboard() {
       }).length;
       return {
         mes: MESES[d.getMonth()],
-        labelCompleto: `${MESES[d.getMonth()]} de ${d.getFullYear()}`,
+        labelCompleto: formatDateToBR(d) || `${MESES[d.getMonth()]} de ${d.getFullYear()}`,
         novos: total,
       };
     });
   }, [alunos]);
 
-  // --- Últimas 5 Matrículas ---
-  const ultimasMatriculas = matriculas.slice(0, 5);
+  // --- Últimas 5 Matrículas (Memoizado com datas formatadas como DD/MM/YYYY) ---
+  const ultimasMatriculas = useMemo(() => {
+    return matriculas.slice(0, 5);
+  }, [matriculas]);
+
+  // Mapa de alunos por ID para busca O(1) na renderização das últimas matrículas
+  const alunosMap = useMemo(() => {
+    const map = new Map<string, Aluno>();
+    alunos.forEach(a => {
+      if (a.id) map.set(a.id, a);
+    });
+    return map;
+  }, [alunos]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -374,7 +391,7 @@ export default function Dashboard() {
           value={leads.length}
           icon={UserPlus}
           variant="info"
-          trend={`${leads.filter(l => l.status_lead === "NOVO").length} aguardando contato`}
+          trend={`${leadsAguardandoCount} aguardando contato`}
           trendType="neutral"
         />
         <StatCard
@@ -400,7 +417,7 @@ export default function Dashboard() {
             </p>
             <div className="flex items-center gap-2 text-emerald-400 text-xs font-medium pt-1">
               <TrendingUp className="w-4 h-4" />
-              <span>{pagamentos.filter(p => parsePayment(p).isPago).length} pagamentos liquidados com sucesso</span>
+              <span>{pagamentosLiquidadosCount} pagamentos liquidados com sucesso</span>
             </div>
           </div>
 
@@ -610,8 +627,9 @@ export default function Dashboard() {
               </div>
             ) : (
               ultimasMatriculas.map(m => {
-                const aluno = alunos.find(a => a.id === m.id_aluno);
+                const aluno = m.id_aluno ? alunosMap.get(m.id_aluno) : undefined;
                 const initial = aluno?.nome_completo ? aluno.nome_completo.charAt(0).toUpperCase() : "M";
+                const dataInicioFormatted = formatDateToBR(m.data_inicio) || "Data não inf.";
                 return (
                   <div
                     key={m.id}
@@ -626,7 +644,7 @@ export default function Dashboard() {
                           {aluno?.nome_completo || m.id_aluno}
                         </p>
                         <p className="text-[10px] text-muted-foreground">
-                          {m.data_inicio || "Data não inf."} &bull; R$ {Number(m.valor_final || 0).toFixed(2)}
+                          {dataInicioFormatted} &bull; R$ {Number(m.valor_final || 0).toFixed(2)}
                         </p>
                       </div>
                     </div>

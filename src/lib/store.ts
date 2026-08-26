@@ -50,6 +50,7 @@ export interface Matricula {
   id_modalidade: string;
   id_turma: string;
   tipo_matricula: string;
+  tipo_plano?: string;
   data_inicio: string;
   data_fim_prevista: string;
   status_matricula: string;

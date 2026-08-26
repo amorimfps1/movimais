@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import PageHeader from "@/components/PageHeader";
 import DataTable, { FilterConfig } from "@/components/DataTable";
 import StatusBadge from "@/components/StatusBadge";
@@ -8,8 +8,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, DollarSign, CheckCircle2, AlertTriangle, Clock, Receipt, Check } from "lucide-react";
+import { Plus, DollarSign, CheckCircle2, AlertTriangle, Clock, Receipt, Check, Eye } from "lucide-react";
 import { create, update, remove, generateId, STORES, type Pagamento, type Aluno, type Matricula } from "@/lib/store";
+import { formatDateToBR } from "@/lib/utils";
 import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,40 +27,58 @@ export default function PagamentosPage() {
   const { data: matriculas } = useTable<Matricula>(STORES.MATRICULAS);
 
   const [open, setOpen] = useState(false);
+  const [viewItem, setViewItem] = useState<Pagamento | null>(null);
   const [editingItem, setEditingItem] = useState<Pagamento | null>(null);
   const [form, setForm] = useState<Pagamento>(emptyPagamento());
   const { toast } = useToast();
 
-  // KPIs Financeiros
-  const totalRecebido = pagamentos
-    .filter(p => p.status_pagamento === "PAGO")
-    .reduce((sum, p) => sum + (Number(p.valor_pago) || Number(p.valor_previsto) || 0), 0);
+  // Maps para busca O(1)
+  const alunosMap = useMemo(() => new Map(alunos.map(a => [a.id, a])), [alunos]);
+  const matriculasMap = useMemo(() => new Map(matriculas.map(m => [m.id, m])), [matriculas]);
 
-  const totalPendente = pagamentos
-    .filter(p => p.status_pagamento === "PENDENTE" || p.status_pagamento === "PREVISTO")
-    .reduce((sum, p) => sum + (Number(p.valor_previsto) || 0), 0);
+  // KPIs Financeiros Otimizados
+  const { totalRecebido, totalPendente, totalAtrasado, taxaAdimplencia } = useMemo(() => {
+    const recebido = pagamentos
+      .filter(p => p.status_pagamento === "PAGO")
+      .reduce((sum, p) => sum + (Number(p.valor_pago) || Number(p.valor_previsto) || 0), 0);
 
-  const totalAtrasado = pagamentos
-    .filter(p => p.status_pagamento === "ATRASADO")
-    .reduce((sum, p) => sum + (Number(p.valor_previsto) || 0), 0);
+    const pendente = pagamentos
+      .filter(p => p.status_pagamento === "PENDENTE" || p.status_pagamento === "PREVISTO")
+      .reduce((sum, p) => sum + (Number(p.valor_previsto) || 0), 0);
 
-  const taxaAdimplencia = pagamentos.length > 0
-    ? Math.round((pagamentos.filter(p => p.status_pagamento === "PAGO").length / pagamentos.length) * 100)
-    : 100;
+    const atrasado = pagamentos
+      .filter(p => p.status_pagamento === "ATRASADO")
+      .reduce((sum, p) => sum + (Number(p.valor_previsto) || 0), 0);
 
-  const handleNew = () => {
+    const taxa = pagamentos.length > 0
+      ? Math.round((pagamentos.filter(p => p.status_pagamento === "PAGO").length / pagamentos.length) * 100)
+      : 100;
+
+    return { totalRecebido: recebido, totalPendente: pendente, totalAtrasado: atrasado, taxaAdimplencia: taxa };
+  }, [pagamentos]);
+
+  // Seletores Otimizados
+  const alunoOptions = useMemo(() => (
+    alunos.map(a => <SelectItem key={a.id} value={a.id}>{a.nome_completo}</SelectItem>)
+  ), [alunos]);
+
+  const matriculaOptions = useMemo(() => (
+    matriculas.map(m => <SelectItem key={m.id} value={m.id}>{m.id}</SelectItem>)
+  ), [matriculas]);
+
+  const handleNew = useCallback(() => {
     setEditingItem(null);
     setForm(emptyPagamento());
     setOpen(true);
-  };
+  }, []);
 
-  const handleEdit = (item: Pagamento) => {
+  const handleEdit = useCallback((item: Pagamento) => {
     setEditingItem(item);
     setForm({ ...item });
     setOpen(true);
-  };
+  }, []);
 
-  const handleDelete = async (item: Pagamento) => {
+  const handleDelete = useCallback(async (item: Pagamento) => {
     try {
       await remove(STORES.PAGAMENTOS, item.id);
       await reload();
@@ -67,10 +86,10 @@ export default function PagamentosPage() {
     } catch (e: any) {
       toast({ title: "Erro ao remover", description: e.message, variant: "destructive" });
     }
-  };
+  }, [reload, toast]);
 
   // Ação rápida: Dar baixa / Confirmar recebimento
-  const handleDarBaixa = async (item: Pagamento) => {
+  const handleDarBaixa = useCallback(async (item: Pagamento) => {
     try {
       const updated: Pagamento = {
         ...item,
@@ -82,14 +101,14 @@ export default function PagamentosPage() {
       await reload();
       toast({
         title: "✅ Pagamento confirmado com sucesso!",
-        description: `Recebimento de R$ ${Number(updated.valor_pago).toFixed(2)} liquidado no sistema.`,
+        description: `Recebimento de R$ ${Number(updated.valor_pago).toFixed(2)} liquidado no sistema em ${formatDateToBR(updated.data_pagamento)}.`,
       });
     } catch (e: any) {
       toast({ title: "Erro ao dar baixa", description: e.message, variant: "destructive" });
     }
-  };
+  }, [reload, toast]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     try {
       const payload = {
         ...form,
@@ -111,9 +130,9 @@ export default function PagamentosPage() {
     } catch (e: any) {
       toast({ title: "Erro ao salvar", description: e.message, variant: "destructive" });
     }
-  };
+  }, [editingItem, form, reload, toast]);
 
-  const set = (k: keyof Pagamento, v: any) => setForm(prev => ({ ...prev, [k]: v }));
+  const set = useCallback((k: keyof Pagamento, v: any) => setForm(prev => ({ ...prev, [k]: v })), []);
 
   const filters: FilterConfig[] = useMemo(() => [
     {
@@ -199,27 +218,39 @@ export default function PagamentosPage() {
         filters={filters}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onRowClick={item => setViewItem(item)}
         exportFilename="financeiro_movimais"
         customActions={pag => (
-          pag.status_pagamento !== "PAGO" ? (
+          <div className="flex items-center gap-1">
             <Button
-              size="sm"
-              variant="outline"
-              className="h-8 px-2.5 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 border-emerald-500/30 rounded-lg gap-1.5"
-              onClick={() => handleDarBaixa(pag)}
-              title="Dar baixa e confirmar recebimento"
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-white/10 rounded-lg"
+              onClick={() => setViewItem(pag)}
+              title="Visualizar detalhes do lançamento"
             >
-              <Check className="w-3.5 h-3.5" />
-              <span>Dar Baixa</span>
+              <Eye className="w-3.5 h-3.5" />
             </Button>
-          ) : null
+            {pag.status_pagamento !== "PAGO" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 px-2.5 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 border-emerald-500/30 rounded-lg gap-1.5"
+                onClick={() => handleDarBaixa(pag)}
+                title="Dar baixa e confirmar recebimento"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Dar Baixa</span>
+              </Button>
+            )}
+          </div>
         )}
         columns={[
           {
             key: "id_aluno",
             label: "Aluno / Pagador",
             render: p => {
-              const aluno = alunos.find(a => a.id === p.id_aluno);
+              const aluno = alunosMap.get(p.id_aluno);
               const initial = aluno?.nome_completo ? aluno.nome_completo.charAt(0).toUpperCase() : "P";
               return (
                 <div className="flex items-center gap-3">
@@ -242,7 +273,12 @@ export default function PagamentosPage() {
           {
             key: "data_vencimento",
             label: "Vencimento",
-            render: p => <span className="text-xs text-muted-foreground">{p.data_vencimento || "—"}</span>,
+            render: p => <span className="text-xs text-muted-foreground">{formatDateToBR(p.data_vencimento)}</span>,
+          },
+          {
+            key: "data_pagamento",
+            label: "Data Pagamento",
+            render: p => <span className="text-xs text-muted-foreground">{formatDateToBR(p.data_pagamento)}</span>,
           },
           {
             key: "valor_previsto",
@@ -266,6 +302,85 @@ export default function PagamentosPage() {
         ]}
       />
 
+      {/* Modal de Detalhes do Pagamento */}
+      <Dialog open={!!viewItem} onOpenChange={open => { if (!open) setViewItem(null); }}>
+        <DialogContent className="max-w-md bg-card/95 backdrop-blur-2xl border-white/10 rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-sm flex items-center justify-center shrink-0">
+                <Receipt className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-foreground">{alunosMap.get(viewItem?.id_aluno || "")?.nome_completo || "Lançamento Financeiro"}</p>
+                <p className="text-xs text-muted-foreground font-normal">
+                  Vencimento em {formatDateToBR(viewItem?.data_vencimento)}
+                </p>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+
+          {viewItem && (
+            <div className="space-y-4 pt-2 text-xs">
+              <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-white/[0.03] border border-white/5">
+                <div>
+                  <span className="text-muted-foreground block">Aluno:</span>
+                  <span className="text-foreground font-medium">{alunosMap.get(viewItem.id_aluno)?.nome_completo || viewItem.id_aluno || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">Tipo de Lançamento:</span>
+                  <span className="text-foreground font-medium capitalize">{viewItem.tipo_lancamento?.replace(/_/g, " ").toLowerCase()}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">Mês/Ano Referência:</span>
+                  <span className="text-foreground font-medium">{viewItem.mes_referencia}/{viewItem.ano_referencia}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">Forma de Pagamento:</span>
+                  <span className="text-foreground font-medium capitalize">{viewItem.forma_pagamento?.replace(/_/g, " ").toLowerCase() || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">Data de Vencimento:</span>
+                  <span className="text-foreground font-medium">{formatDateToBR(viewItem.data_vencimento)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">Data do Pagamento:</span>
+                  <span className="text-foreground font-medium">{formatDateToBR(viewItem.data_pagamento)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">Valor Previsto:</span>
+                  <span className="text-foreground font-medium">R$ {Number(viewItem.valor_previsto || 0).toFixed(2)}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">Valor Liquidado/Pago:</span>
+                  <span className="text-foreground font-semibold">
+                    {viewItem.valor_pago ? `R$ ${Number(viewItem.valor_pago).toFixed(2)}` : "—"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" size="sm" onClick={() => setViewItem(null)} className="rounded-xl border-white/10">
+                  Fechar
+                </Button>
+                {viewItem.status_pagamento !== "PAGO" && (
+                  <Button
+                    size="sm"
+                    onClick={() => { const item = viewItem; setViewItem(null); handleDarBaixa(item); }}
+                    className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Dar Baixa Agora</span>
+                  </Button>
+                )}
+                <Button size="sm" onClick={() => { const item = viewItem; setViewItem(null); handleEdit(item); }} className="rounded-xl">
+                  Editar Lançamento
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Modal de Criação / Edição de Pagamento */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-lg bg-card/95 backdrop-blur-2xl border-white/10 rounded-2xl p-6">
@@ -281,7 +396,7 @@ export default function PagamentosPage() {
               <Select value={form.id_aluno} onValueChange={v => set("id_aluno", v)}>
                 <SelectTrigger className="bg-background/60 border-white/10 rounded-xl"><SelectValue placeholder="Selecione o aluno..." /></SelectTrigger>
                 <SelectContent className="bg-card/95 border-white/10 max-h-56">
-                  {alunos.map(a => <SelectItem key={a.id} value={a.id}>{a.nome_completo}</SelectItem>)}
+                  {alunoOptions}
                 </SelectContent>
               </Select>
             </div>
@@ -291,7 +406,7 @@ export default function PagamentosPage() {
               <Select value={form.id_matricula} onValueChange={v => set("id_matricula", v)}>
                 <SelectTrigger className="bg-background/60 border-white/10 rounded-xl"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent className="bg-card/95 border-white/10">
-                  {matriculas.map(m => <SelectItem key={m.id} value={m.id}>{m.id}</SelectItem>)}
+                  {matriculaOptions}
                 </SelectContent>
               </Select>
             </div>

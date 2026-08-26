@@ -34,3 +34,63 @@ export function validateCPF(value: string): boolean {
 
   return calc(cpf, 9) === parseInt(cpf[9]) && calc(cpf, 10) === parseInt(cpf[10]);
 }
+
+/**
+ * Formata uma data para o padrão brasileiro DD/MM/YYYY.
+ * Aceita strings ISO (ex: "2026-08-26", "2026-08-26T00:00:00.000Z"), objetos Date, ou valores nulos/indefinidos.
+ * Se o valor for inválido, nulo ou vazio, retorne "—".
+ */
+export function formatDateToBR(dateValue?: string | Date | number | null): string {
+  if (!dateValue) return "—";
+
+  if (dateValue instanceof Date) {
+    if (isNaN(dateValue.getTime())) return "—";
+    const day = String(dateValue.getDate()).padStart(2, "0");
+    const month = String(dateValue.getMonth() + 1).padStart(2, "0");
+    const year = dateValue.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  if (typeof dateValue === "number") {
+    const d = new Date(dateValue);
+    if (isNaN(d.getTime())) return "—";
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  if (typeof dateValue === "string") {
+    const str = dateValue.trim();
+    if (!str) return "—";
+
+    // Se já estiver no formato DD/MM/YYYY
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) return str;
+
+    // Se estiver no formato YYYY-MM-DD ou YYYY-MM-DDTHH:mm...
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+      const datePart = str.split("T")[0];
+      const [year, month, day] = datePart.split("-");
+      if (year && month && day) {
+        const y = parseInt(year, 10);
+        const m = parseInt(month, 10);
+        const d = parseInt(day, 10);
+        if (m >= 1 && m <= 12 && d >= 1 && d <= 31 && y > 1000) {
+          return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
+        }
+      }
+    }
+
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      const day = String(d.getDate()).padStart(2, "0");
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const year = d.getFullYear();
+      return `${day}/${month}/${year}`;
+    }
+
+    return "—";
+  }
+
+  return "—";
+}

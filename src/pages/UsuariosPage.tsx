@@ -42,7 +42,7 @@ import {
   Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatDateToBR } from "@/lib/utils";
 import { STORES, type Modalidade, type Instrutor } from "@/lib/store";
 import { useTable } from "@/hooks/useTable";
 
@@ -646,15 +646,7 @@ export default function UsuariosPage() {
                     {displayedProfiles.map((p) => {
                       const isSelf = p.id === currentUser?.id;
                       const initial = p.nome ? p.nome.charAt(0).toUpperCase() : p.email.charAt(0).toUpperCase();
-                      const dateFormatted = p.created_at
-                        ? new Date(p.created_at).toLocaleDateString("pt-BR", {
-                            day: "2-digit",
-                            month: "2-digit",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })
-                        : "Recente";
+                      const dateFormatted = formatDateToBR(p.created_at);
 
                       return (
                         <div
@@ -811,8 +803,20 @@ export default function UsuariosPage() {
                                 )}
                               </div>
 
-                              <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                              <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5 flex-wrap">
                                 <span>{p.email}</span>
+                                {p.created_at && (
+                                  <>
+                                    <span>•</span>
+                                    <span>Cadastrado em: {formatDateToBR(p.created_at)}</span>
+                                  </>
+                                )}
+                                {p.approved_at && (
+                                  <>
+                                    <span>•</span>
+                                    <span>Aprovado em: {formatDateToBR(p.approved_at)}</span>
+                                  </>
+                                )}
                                 {isSelf && (
                                   <span className="text-[10px] text-muted-foreground/80 italic">
                                     • (Auto-edição bloqueada)
@@ -952,7 +956,15 @@ export default function UsuariosPage() {
           <div className="space-y-4 py-3">
             <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 space-y-1">
               <div className="text-xs font-semibold text-foreground">{approveTarget?.nome || approveTarget?.email}</div>
-              <div className="text-[11px] text-muted-foreground">{approveTarget?.email}</div>
+              <div className="text-[11px] text-muted-foreground flex items-center gap-2 flex-wrap">
+                <span>{approveTarget?.email}</span>
+                {approveTarget?.created_at && (
+                  <>
+                    <span>•</span>
+                    <span>Solicitado em: {formatDateToBR(approveTarget.created_at)}</span>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Menu Suspenso de Roles */}
@@ -1218,11 +1230,23 @@ export default function UsuariosPage() {
               <div className="text-xs text-rose-300 font-mono font-medium">
                 {deleteTarget?.email}
               </div>
-              <div className="text-[11px] text-muted-foreground pt-1 flex items-center gap-1.5">
+              <div className="text-[11px] text-muted-foreground pt-1 flex items-center gap-1.5 flex-wrap">
                 <span>Status atual:</span>
                 <span className="font-semibold capitalize text-foreground">
                   {deleteTarget?.status || "Pendente"}
                 </span>
+                {deleteTarget?.created_at && (
+                  <>
+                    <span>•</span>
+                    <span>Cadastro: <strong className="text-foreground">{formatDateToBR(deleteTarget.created_at)}</strong></span>
+                  </>
+                )}
+                {deleteTarget?.approved_at && (
+                  <>
+                    <span>•</span>
+                    <span>Aprovação: <strong className="text-foreground">{formatDateToBR(deleteTarget.approved_at)}</strong></span>
+                  </>
+                )}
               </div>
             </div>
 

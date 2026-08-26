@@ -14,6 +14,7 @@ import { generateId, STORES, type Turma, type Aluno, type Matricula, type Presen
 import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
+import { formatDateToBR } from "@/lib/utils";
 
 const DIAS_SEMANA_MAP = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
@@ -238,7 +239,7 @@ export default function PresencasPage() {
           horario_inicio: selectedTurma?.horario_inicio || "08:00:00",
           horario_fim: selectedTurma?.horario_fim || "09:00:00",
           status_aula: "REALIZADA",
-          observacoes: `Chamada realizada em ${dataAula} (${rows.filter(r => r.presenca).length}/${rows.length} presentes)`,
+          observacoes: `Chamada realizada em ${formatDateToBR(dataAula)} (${rows.filter(r => r.presenca).length}/${rows.length} presentes)`,
         });
       }
 
@@ -340,7 +341,7 @@ export default function PresencasPage() {
             </Label>
             <div className="h-10 px-3 rounded-xl bg-white/[0.03] border border-white/10 flex items-center gap-2 text-xs font-semibold text-foreground">
               <Calendar className="w-4 h-4 text-primary" />
-              <span>{diaSemanaSelecionado}</span>
+              <span>{diaSemanaSelecionado} ({formatDateToBR(dataAula)})</span>
             </div>
           </div>
 
@@ -397,7 +398,7 @@ export default function PresencasPage() {
           <div>
             <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
               <Calendar className="w-4 h-4 text-primary" />
-              Grade de Aulas de {diaSemanaSelecionado} ({dataAula})
+              Grade de Aulas de {diaSemanaSelecionado} ({formatDateToBR(dataAula)})
             </h3>
             <p className="text-xs text-muted-foreground">
               Turmas com aula programada para este dia da semana na grade horária fixa
@@ -543,7 +544,7 @@ export default function PresencasPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-base font-bold text-foreground">{turmaSelecionada?.nome_turma}</h3>
                 <span className="text-xs text-muted-foreground">&bull; {modSelecionada?.nome_modalidade}</span>
-                <span className="text-xs text-muted-foreground">&bull; Aula de {dataAula} ({diaSemanaSelecionado})</span>
+                <span className="text-xs text-muted-foreground">&bull; Aula de {formatDateToBR(dataAula)} ({diaSemanaSelecionado})</span>
               </div>
 
               <div className="text-xs text-muted-foreground flex items-center gap-2 pt-0.5">

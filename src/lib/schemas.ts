@@ -96,6 +96,7 @@ export const matriculaSchema = z.object({
     .enum(['NORMAL', 'BOLSA', 'DESCONTO_ESPECIAL', 'ASSOCIADO_MCJB', 'CORTESIA', 'EXPERIMENTAL_CONVERTIDA', ''])
     .optional()
     .default('NORMAL'),
+  tipo_plano: z.enum(['MENSAL', 'TRIMESTRAL', 'ANUAL', '']).optional().default('TRIMESTRAL'),
   data_inicio: z.string().optional(),
   data_fim_prevista: z.string().optional(),
   status_matricula: z

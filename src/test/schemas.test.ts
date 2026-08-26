@@ -214,6 +214,16 @@ describe('matriculaSchema', () => {
     const matricula = { id: 'M1', id_aluno: 'A1', id_modalidade: null };
     expect(matriculaSchema.safeParse(matricula).success).toBe(true);
   });
+
+  it('should pass valid tipo_plano values (MENSAL, TRIMESTRAL, ANUAL)', () => {
+    expect(matriculaSchema.safeParse({ id: 'M1', id_aluno: 'A1', tipo_plano: 'MENSAL' }).success).toBe(true);
+    expect(matriculaSchema.safeParse({ id: 'M1', id_aluno: 'A1', tipo_plano: 'TRIMESTRAL' }).success).toBe(true);
+    expect(matriculaSchema.safeParse({ id: 'M1', id_aluno: 'A1', tipo_plano: 'ANUAL' }).success).toBe(true);
+  });
+
+  it('should fail invalid tipo_plano', () => {
+    expect(matriculaSchema.safeParse({ id: 'M1', id_aluno: 'A1', tipo_plano: 'DECENAL' }).success).toBe(false);
+  });
 });
 
 describe('turmaSchema', () => {

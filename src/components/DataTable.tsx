@@ -3,13 +3,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Pencil, Search, Trash2, Download, ChevronLeft, ChevronRight,
   ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown,
   X, Filter, SlidersHorizontal, Inbox
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatDateToBR } from "@/lib/utils";
 
 export interface Column<T> {
   key: string;
@@ -51,6 +51,24 @@ interface Props<T> {
 
 type SortDirection = "asc" | "desc" | null;
 
+const isDateValue = (val: any, key?: string): boolean => {
+  if (val instanceof Date) return true;
+  if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}/.test(val.trim())) return true;
+  if (key && (key.includes("data") || key.includes("date") || key.endsWith("_at")) && typeof val === "string" && val.length >= 10) {
+    return true;
+  }
+  return false;
+};
+
+const formatCellDisplay = (val: any, key?: string): string => {
+  if (val === null || val === undefined) return "—";
+  if (isDateValue(val, key)) {
+    const formatted = formatDateToBR(val);
+    if (formatted) return formatted;
+  }
+  return String(val);
+};
+
 export default function DataTable<T extends Record<string, any>>({
   data,
   columns,
@@ -69,12 +87,21 @@ export default function DataTable<T extends Record<string, any>>({
   headerSlot,
 }: Props<T>) {
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const [deletingItem, setDeletingItem] = useState<T | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(pageSizeDefault);
+
+  // Debounce para busca textual com delay de 250ms
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // Manipulação de Filtros
   const handleFilterChange = (filterKey: string, value: string) => {
@@ -101,6 +128,7 @@ export default function DataTable<T extends Record<string, any>>({
 
   const clearAllFilters = () => {
     setSearch("");
+    setDebouncedSearch("");
     setActiveFilters({});
     setPage(1);
   };
@@ -119,13 +147,13 @@ export default function DataTable<T extends Record<string, any>>({
     }
   };
 
-  // Filtragem
+  // Filtragem e Ordenação memoizadas com dependências estritas
   const filtered = useMemo(() => {
     let result = [...data];
 
-    // Busca textual
-    if (search && searchKeys && searchKeys.length > 0) {
-      const s = search.toLowerCase().trim();
+    // Busca textual usando valor debounced
+    if (debouncedSearch && searchKeys && searchKeys.length > 0) {
+      const s = debouncedSearch.toLowerCase().trim();
       result = result.filter(item =>
         searchKeys.some(key => {
           const val = item[key];
@@ -166,7 +194,7 @@ export default function DataTable<T extends Record<string, any>>({
     }
 
     return result;
-  }, [data, search, searchKeys, activeFilters, sortKey, sortDirection]);
+  }, [data, debouncedSearch, searchKeys, activeFilters, sortKey, sortDirection]);
 
   // Paginação
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
@@ -177,7 +205,7 @@ export default function DataTable<T extends Record<string, any>>({
     return filtered.slice(start, start + pageSize);
   }, [filtered, currentPage, pageSize]);
 
-  // Exportação CSV
+  // Exportação CSV com formatação DD/MM/YYYY para datas
   const handleExportCSV = () => {
     if (filtered.length === 0) return;
 
@@ -185,7 +213,11 @@ export default function DataTable<T extends Record<string, any>>({
     const rows = filtered.map(item => {
       return columns.map(c => {
         let val = c.exportValue ? c.exportValue(item) : item[c.key];
-        if (val === null || val === undefined) val = "";
+        if (val === null || val === undefined) {
+          val = "";
+        } else if (isDateValue(val, c.key)) {
+          val = formatDateToBR(val) || val;
+        }
         const strVal = String(val).replace(/"/g, '""');
         return `"${strVal}"`;
       }).join(",");
@@ -203,7 +235,7 @@ export default function DataTable<T extends Record<string, any>>({
   };
 
   const hasActions = !!(onEdit || onDelete || customActions);
-  const hasActiveFilters = Object.keys(activeFilters).length > 0 || !!search;
+  const hasActiveFilters = Object.keys(activeFilters).length > 0 || !!debouncedSearch || !!search;
 
   return (
     <div className="rounded-2xl border border-white/10 bg-card/60 backdrop-blur-xl shadow-xl overflow-hidden transition-all duration-300">
@@ -225,7 +257,7 @@ export default function DataTable<T extends Record<string, any>>({
                 />
                 {search && (
                   <button
-                    onClick={() => { setSearch(""); setPage(1); }}
+                    onClick={() => { setSearch(""); setDebouncedSearch(""); setPage(1); }}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-full"
                     title="Limpar busca"
                   >
@@ -288,10 +320,10 @@ export default function DataTable<T extends Record<string, any>>({
               Filtros ativos:
             </span>
 
-            {search && (
+            {(debouncedSearch || search) && (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary border border-primary/20 text-[11px]">
-                Busca: <strong>"{search}"</strong>
-                <button onClick={() => { setSearch(""); setPage(1); }} className="hover:opacity-75 ml-0.5">
+                Busca: <strong>"{search || debouncedSearch}"</strong>
+                <button onClick={() => { setSearch(""); setDebouncedSearch(""); setPage(1); }} className="hover:opacity-75 ml-0.5">
                   <X className="w-3 h-3" />
                 </button>
               </span>
@@ -407,7 +439,7 @@ export default function DataTable<T extends Record<string, any>>({
                       key={col.key}
                       className={cn("py-3.5 px-4 text-xs sm:text-sm text-foreground/90", col.className)}
                     >
-                      {col.render ? col.render(item) : String(item[col.key] ?? "—")}
+                      {col.render ? col.render(item) : formatCellDisplay(item[col.key], col.key)}
                     </TableCell>
                   ))}
 

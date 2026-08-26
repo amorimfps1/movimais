@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import PageHeader from "@/components/PageHeader";
 import DataTable, { FilterConfig } from "@/components/DataTable";
 import StatusBadge from "@/components/StatusBadge";
@@ -9,9 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, UserPlus, MessageSquare, UserCheck, Sparkles, TrendingUp } from "lucide-react";
+import { Plus, UserPlus, MessageSquare, UserCheck, Sparkles, TrendingUp, Eye } from "lucide-react";
 import { create, update, remove, generateId, STORES, type Lead, type Aluno } from "@/lib/store";
-import { maskCPF } from "@/lib/utils";
+import { maskCPF, formatDateToBR } from "@/lib/utils";
 import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,33 +26,43 @@ const emptyLead = (): Lead => ({
 export default function LeadsPage() {
   const { data: leads, reload } = useTable<Lead>(STORES.LEADS);
   const [open, setOpen] = useState(false);
+  const [viewItem, setViewItem] = useState<Lead | null>(null);
   const [editingItem, setEditingItem] = useState<Lead | null>(null);
   const [form, setForm] = useState<Lead>(emptyLead());
   const [cpfMasked, setCpfMasked] = useState("");
   const { toast } = useToast();
 
-  // Métricas
-  const totalLeads = leads.length;
-  const leadsNovos = leads.filter(l => l.status_lead === "NOVO").length;
-  const leadsEmAtendimento = leads.filter(l => l.status_lead === "EM_ATENDIMENTO" || l.status_lead === "AGUARDANDO_RETORNO").length;
-  const convertidos = leads.filter(l => l.status_lead === "CONVERTIDO" || l.converteu_em_aluno).length;
-  const taxaConversao = totalLeads > 0 ? Math.round((convertidos / totalLeads) * 100) : 0;
+  // Métricas otimizadas
+  const { totalLeads, leadsNovos, leadsEmAtendimento, convertidos, taxaConversao } = useMemo(() => {
+    const total = leads.length;
+    const novos = leads.filter(l => l.status_lead === "NOVO").length;
+    const emAtendimento = leads.filter(l => l.status_lead === "EM_ATENDIMENTO" || l.status_lead === "AGUARDANDO_RETORNO").length;
+    const conv = leads.filter(l => l.status_lead === "CONVERTIDO" || l.converteu_em_aluno).length;
+    const taxa = total > 0 ? Math.round((conv / total) * 100) : 0;
+    return {
+      totalLeads: total,
+      leadsNovos: novos,
+      leadsEmAtendimento: emAtendimento,
+      convertidos: conv,
+      taxaConversao: taxa,
+    };
+  }, [leads]);
 
-  const handleNew = () => {
+  const handleNew = useCallback(() => {
     setEditingItem(null);
     setForm(emptyLead());
     setCpfMasked("");
     setOpen(true);
-  };
+  }, []);
 
-  const handleEdit = (item: Lead) => {
+  const handleEdit = useCallback((item: Lead) => {
     setEditingItem(item);
     setForm({ ...item });
     setCpfMasked(maskCPF(item.cpf || ""));
     setOpen(true);
-  };
+  }, []);
 
-  const handleDelete = async (item: Lead) => {
+  const handleDelete = useCallback(async (item: Lead) => {
     try {
       await remove(STORES.LEADS, item.id);
       await reload();
@@ -60,9 +70,9 @@ export default function LeadsPage() {
     } catch (e: any) {
       toast({ title: "Erro ao remover", description: e.message, variant: "destructive" });
     }
-  };
+  }, [reload, toast]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!form.nome.trim()) {
       toast({ title: "Preencha o nome do interessado", variant: "destructive" });
       return;
@@ -80,10 +90,10 @@ export default function LeadsPage() {
     } catch (e: any) {
       toast({ title: "Erro ao salvar", description: e.message, variant: "destructive" });
     }
-  };
+  }, [editingItem, form, reload, toast]);
 
   // Conversão de Lead em Aluno em 1 clique
-  const handleConverterEmAluno = async (lead: Lead) => {
+  const handleConverterEmAluno = useCallback(async (lead: Lead) => {
     try {
       const novoAluno: Aluno = {
         id: generateId(),
@@ -123,18 +133,18 @@ export default function LeadsPage() {
     } catch (e: any) {
       toast({ title: "Erro na conversão", description: e.message, variant: "destructive" });
     }
-  };
+  }, [reload, toast]);
 
-  const openWhatsApp = (lead: Lead) => {
+  const openWhatsApp = useCallback((lead: Lead) => {
     const clean = (lead.telefone || "").replace(/\D/g, "");
     if (!clean) return;
     const num = clean.startsWith("55") ? clean : `55${clean}`;
     const modalidadeTxt = lead.modalidade_interesse ? ` na modalidade de *${lead.modalidade_interesse}*` : "";
     const msg = encodeURIComponent(`Olá ${lead.nome}, tudo bem? Sou do MOVI+ do Jardim Botânico! Vi seu interesse${modalidadeTxt}. Como posso te ajudar a agendar uma aula experimental?`);
     window.open(`https://wa.me/${num}?text=${msg}`, "_blank");
-  };
+  }, []);
 
-  const set = (k: keyof Lead, v: any) => setForm(prev => ({ ...prev, [k]: v }));
+  const set = useCallback((k: keyof Lead, v: any) => setForm(prev => ({ ...prev, [k]: v })), []);
 
   const filters: FilterConfig[] = useMemo(() => [
     {
@@ -216,9 +226,19 @@ export default function LeadsPage() {
         filters={filters}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onRowClick={item => setViewItem(item)}
         exportFilename="leads_movimais"
         customActions={lead => (
           <div className="flex items-center gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-white/10 rounded-lg"
+              onClick={() => setViewItem(lead)}
+              title="Visualizar detalhes do lead"
+            >
+              <Eye className="w-3.5 h-3.5" />
+            </Button>
             {lead.telefone && (
               <Button
                 size="icon"
@@ -283,8 +303,13 @@ export default function LeadsPage() {
           },
           {
             key: "data_entrada",
-            label: "Data",
-            render: l => <span className="text-xs text-muted-foreground">{l.data_entrada || "—"}</span>,
+            label: "Data Entrada",
+            render: l => <span className="text-xs text-muted-foreground">{formatDateToBR(l.data_entrada)}</span>,
+          },
+          {
+            key: "data_ultimo_contato",
+            label: "Último Contato",
+            render: l => <span className="text-xs text-muted-foreground">{formatDateToBR(l.data_ultimo_contato)}</span>,
           },
           {
             key: "status_lead",
@@ -294,9 +319,79 @@ export default function LeadsPage() {
         ]}
       />
 
+      {/* Modal de Detalhes do Lead */}
+      <Dialog open={!!viewItem} onOpenChange={open => { if (!open) setViewItem(null); }}>
+        <DialogContent className="max-w-md bg-card/95 backdrop-blur-2xl border-white/10 rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-semibold flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-sky-500/10 border border-sky-500/20 text-sky-400 font-bold text-sm flex items-center justify-center shrink-0">
+                {viewItem?.nome ? viewItem.nome.charAt(0).toUpperCase() : "L"}
+              </div>
+              <div>
+                <p className="text-foreground">{viewItem?.nome}</p>
+                <p className="text-xs text-muted-foreground font-normal">
+                  Data Entrada: {formatDateToBR(viewItem?.data_entrada)}
+                </p>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+
+          {viewItem && (
+            <div className="space-y-4 pt-2 text-xs">
+              <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-white/[0.03] border border-white/5">
+                <div>
+                  <span className="text-muted-foreground block">Telefone / WhatsApp:</span>
+                  <span className="text-foreground font-medium">{viewItem.telefone || "Não informado"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">E-mail:</span>
+                  <span className="text-foreground font-medium">{viewItem.email || "Não informado"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">CPF:</span>
+                  <span className="font-mono text-foreground font-medium">{maskCPF(viewItem.cpf || "")}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">Canal de Origem:</span>
+                  <span className="text-foreground font-medium capitalize">{viewItem.canal_origem?.toLowerCase() || "—"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">Modalidade de Interesse:</span>
+                  <span className="text-foreground font-medium">{viewItem.modalidade_interesse || "Geral"}</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block">Último Contato:</span>
+                  <span className="text-foreground font-medium">{formatDateToBR(viewItem.data_ultimo_contato)}</span>
+                </div>
+                <div className="col-span-2">
+                  <span className="text-muted-foreground block">Responsável pelo Atendimento:</span>
+                  <span className="text-foreground font-medium">{viewItem.responsavel_atendimento || "Não atribuído"}</span>
+                </div>
+              </div>
+
+              {viewItem.observacoes && (
+                <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                  <span className="text-muted-foreground block mb-1">Observações:</span>
+                  <p className="text-foreground">{viewItem.observacoes}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" size="sm" onClick={() => setViewItem(null)} className="rounded-xl border-white/10">
+                  Fechar
+                </Button>
+                <Button size="sm" onClick={() => { const item = viewItem; setViewItem(null); handleEdit(item); }} className="rounded-xl">
+                  Editar Lead
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Modal de Criação / Edição de Lead */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg bg-card/95 backdrop-blur-2xl border-white/10 rounded-2xl p-6">
+        <DialogContent className="max-w-lg bg-card/95 backdrop-blur-2xl border-white/10 rounded-2xl p-6 max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold">
               {editingItem ? "Editar Lead" : "Registrar Novo Lead"}
@@ -323,6 +418,14 @@ export default function LeadsPage() {
                 onChange={(raw, masked) => { setCpfMasked(masked); set("cpf", raw); }}
                 showValidation={!!cpfMasked}
               />
+            </div>
+            <div>
+              <Label className="text-xs">Data de Entrada</Label>
+              <Input type="date" value={form.data_entrada} onChange={e => set("data_entrada", e.target.value)} className="bg-background/60 border-white/10 rounded-xl" />
+            </div>
+            <div>
+              <Label className="text-xs">Data Último Contato</Label>
+              <Input type="date" value={form.data_ultimo_contato} onChange={e => set("data_ultimo_contato", e.target.value)} className="bg-background/60 border-white/10 rounded-xl" />
             </div>
             <div>
               <Label className="text-xs">Canal de Origem</Label>

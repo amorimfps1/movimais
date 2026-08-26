@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import PageHeader from "@/components/PageHeader";
 import DataTable, { FilterConfig } from "@/components/DataTable";
 import StatusBadge from "@/components/StatusBadge";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Users, UserCheck, Phone, MessageSquare, HeartHandshake, Eye } from "lucide-react";
 import { create, update, remove, generateId, STORES, type Aluno } from "@/lib/store";
-import { maskCPF, validateCPF, stripCPF } from "@/lib/utils";
+import { maskCPF, validateCPF, stripCPF, formatDateToBR } from "@/lib/utils";
 import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
 
@@ -36,27 +36,30 @@ export default function AlunosPage() {
   const { toast } = useToast();
 
   // Métricas
-  const totalAlunos = alunos.length;
-  const alunosAtivos = alunos.filter(a => a.status_cadastral === "ATIVO").length;
-  const menoresIdade = alunos.filter(a => !!a.nome_responsavel || !!a.cpf_responsavel).length;
+  const { totalAlunos, alunosAtivos, menoresIdade } = useMemo(() => {
+    const total = alunos.length;
+    const ativos = alunos.filter(a => a.status_cadastral === "ATIVO").length;
+    const menores = alunos.filter(a => !!a.nome_responsavel || !!a.cpf_responsavel).length;
+    return { totalAlunos: total, alunosAtivos: ativos, menoresIdade: menores };
+  }, [alunos]);
 
-  const handleNew = () => {
+  const handleNew = useCallback(() => {
     setEditingItem(null);
     setForm(emptyAluno());
     setCpfMasked("");
     setCpfRespMasked("");
     setOpen(true);
-  };
+  }, []);
 
-  const handleEdit = (item: Aluno) => {
+  const handleEdit = useCallback((item: Aluno) => {
     setEditingItem(item);
     setForm({ ...item });
     setCpfMasked(maskCPF(item.cpf || ""));
     setCpfRespMasked(maskCPF(item.cpf_responsavel || ""));
     setOpen(true);
-  };
+  }, []);
 
-  const handleDelete = async (item: Aluno) => {
+  const handleDelete = useCallback(async (item: Aluno) => {
     try {
       await remove(STORES.ALUNOS, item.id);
       await reload();
@@ -64,9 +67,9 @@ export default function AlunosPage() {
     } catch (e: any) {
       toast({ title: "Erro ao remover", description: e.message, variant: "destructive" });
     }
-  };
+  }, [reload, toast]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (!form.nome_completo.trim()) {
       toast({ title: "Preencha o nome completo", variant: "destructive" });
       return;
@@ -92,9 +95,9 @@ export default function AlunosPage() {
     } catch (e: any) {
       toast({ title: "Erro ao salvar", description: e.message, variant: "destructive" });
     }
-  };
+  }, [editingItem, form, reload, toast]);
 
-  const set = (key: keyof Aluno, value: any) => setForm(prev => ({ ...prev, [key]: value }));
+  const set = useCallback((key: keyof Aluno, value: any) => setForm(prev => ({ ...prev, [key]: value })), []);
 
   // Filtros avançados para a tabela
   const filters: FilterConfig[] = useMemo(() => [
@@ -119,13 +122,13 @@ export default function AlunosPage() {
     },
   ], []);
 
-  const openWhatsApp = (phone: string, name: string) => {
+  const openWhatsApp = useCallback((phone: string, name: string) => {
     const clean = phone.replace(/\D/g, "");
     if (!clean) return;
     const num = clean.startsWith("55") ? clean : `55${clean}`;
     const msg = encodeURIComponent(`Olá ${name}, tudo bem? Aqui é do MOVI+ MCJB!`);
     window.open(`https://wa.me/${num}?text=${msg}`, "_blank");
-  };
+  }, []);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -242,6 +245,16 @@ export default function AlunosPage() {
             render: a => <span className="text-xs text-muted-foreground">{a.bairro ? `${a.bairro}, ${a.cidade || "DF"}` : a.cidade || "DF"}</span>,
           },
           {
+            key: "data_nascimento",
+            label: "Nascimento",
+            render: a => <span className="text-xs text-muted-foreground">{formatDateToBR(a.data_nascimento)}</span>,
+          },
+          {
+            key: "data_cadastro",
+            label: "Data Cadastro",
+            render: a => <span className="text-xs text-muted-foreground">{formatDateToBR(a.data_cadastro)}</span>,
+          },
+          {
             key: "origem_primeiro_contato",
             label: "Origem",
             render: a => <span className="text-xs text-muted-foreground capitalize">{a.origem_primeiro_contato ? a.origem_primeiro_contato.toLowerCase() : "—"}</span>,
@@ -264,7 +277,7 @@ export default function AlunosPage() {
               </div>
               <div>
                 <p className="text-foreground">{viewItem?.nome_completo}</p>
-                <p className="text-xs text-muted-foreground font-normal">Cadastrado em {viewItem?.data_cadastro || "—"}</p>
+                <p className="text-xs text-muted-foreground font-normal">Cadastrado em {formatDateToBR(viewItem?.data_cadastro)}</p>
               </div>
             </DialogTitle>
           </DialogHeader>
@@ -278,7 +291,7 @@ export default function AlunosPage() {
                 </div>
                 <div>
                   <span className="text-muted-foreground block">Nascimento:</span>
-                  <span className="text-foreground font-medium">{viewItem.data_nascimento || "Não informado"}</span>
+                  <span className="text-foreground font-medium">{formatDateToBR(viewItem.data_nascimento)}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground block">Telefone:</span>
