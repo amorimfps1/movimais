@@ -30,15 +30,57 @@ const COLORS = {
 
 const PIE_COLORS = [COLORS.success, COLORS.warning, COLORS.destructive, COLORS.info, COLORS.purple, COLORS.primary];
 
-const customTooltipStyle = {
-  backgroundColor: "rgba(20, 20, 20, 0.95)",
-  border: "1px solid rgba(255, 255, 255, 0.1)",
-  borderRadius: "12px",
-  color: "#f4f4f5",
-  fontSize: "12px",
-  boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.5)",
-  backdropFilter: "blur(12px)",
-  padding: "8px 12px",
+// Custom Tooltip com fundo escuro e textos 100% brancos para garantir legibilidade máxima
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (!active || !payload || !payload.length) return null;
+
+  const title = payload[0]?.payload?.labelCompleto || label;
+
+  return (
+    <div className="bg-zinc-950/95 border border-white/20 rounded-xl p-3 shadow-2xl backdrop-blur-xl text-xs space-y-1.5 min-w-[150px]">
+      <p className="font-bold text-white border-b border-white/15 pb-1 mb-1.5 text-xs tracking-wide">
+        {title}
+      </p>
+      <div className="space-y-1.5">
+        {payload.map((entry: any, index: number) => {
+          const isCurrency = typeof entry.value === "number" && entry.dataKey !== "novos";
+          const formattedVal = isCurrency
+            ? `R$ ${Number(entry.value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+            : `${entry.value} alunos`;
+
+          const name = entry.name || (entry.dataKey === "recebido" ? "Recebido" : entry.dataKey === "previsto" ? "Previsto" : entry.dataKey);
+          const color = entry.color || entry.fill || "#10b981";
+
+          return (
+            <div key={`item-${index}`} className="flex items-center justify-between gap-3 text-white">
+              <span className="flex items-center gap-1.5 font-medium text-zinc-100">
+                <span className="w-2.5 h-2.5 rounded-full inline-block shrink-0 shadow-sm" style={{ backgroundColor: color }} />
+                <span className="text-white">{name}:</span>
+              </span>
+              <span className="font-bold text-white tracking-tight">{formattedVal}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const CustomPieTooltip = ({ active, payload }: any) => {
+  if (!active || !payload || !payload.length) return null;
+  const data = payload[0];
+
+  return (
+    <div className="bg-zinc-950/95 border border-white/20 rounded-xl p-2.5 shadow-2xl backdrop-blur-xl text-xs min-w-[130px]">
+      <div className="flex items-center justify-between gap-3 text-white">
+        <span className="flex items-center gap-1.5 font-medium text-zinc-100">
+          <span className="w-2.5 h-2.5 rounded-full inline-block shrink-0 shadow-sm" style={{ backgroundColor: data.payload?.fill || data.color }} />
+          <span className="text-white">{data.name}:</span>
+        </span>
+        <span className="font-bold text-white">{data.value}</span>
+      </div>
+    </div>
+  );
 };
 
 export default function Dashboard() {
@@ -49,64 +91,228 @@ export default function Dashboard() {
 
   const [periodo, setPeriodo] = useState<"6m" | "ano">("6m");
 
-  // --- KPIs ---
-  const matriculasAtivas = matriculas.filter(m => m.status_matricula === "ATIVA").length;
-  const pagamentosPendentes = pagamentos.filter(p => ["PENDENTE", "ATRASADO"].includes(p.status_pagamento)).length;
-  const receitaTotal = pagamentos.filter(p => p.status_pagamento === "PAGO").reduce((s, p) => s + (p.valor_pago || 0), 0);
-  const inadimplentes = pagamentos.filter(p => p.status_pagamento === "ATRASADO").length;
-  const novosAlunosMes = alunos.filter(a => {
-    const d = new Date(a.data_cadastro || "");
-    const now = new Date();
-    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-  }).length;
+  // --- Extração robusta de mês, ano, status e valores de Pagamento ---
+  const parsePayment = (p: Pagamento) => {
+    let mes = p.mes_referencia != null ? Number(p.mes_referencia) : NaN;
+    let ano = p.ano_referencia != null ? Number(p.ano_referencia) : NaN;
 
-  const taxaAdimplencia = pagamentos.length > 0
-    ? Math.round((pagamentos.filter(p => p.status_pagamento === "PAGO").length / pagamentos.length) * 100)
-    : 100;
+    if (isNaN(mes) || isNaN(ano) || mes < 1 || mes > 12) {
+      const dateStr = p.data_pagamento || p.data_vencimento || (p as any).created_at;
+      if (dateStr) {
+        const parts = String(dateStr).split("T")[0].split("-");
+        if (parts.length >= 2) {
+          if (isNaN(ano)) ano = parseInt(parts[0], 10);
+          if (isNaN(mes)) mes = parseInt(parts[1], 10);
+        }
+      }
+    }
+
+    const status = String(p.status_pagamento || "").trim().toUpperCase();
+    const valorPagoNum = Number(p.valor_pago) || 0;
+    const valorPrevistoNum = Number(p.valor_previsto) || 0;
+    const isPago = status === "PAGO";
+    const isValido = status !== "ESTORNADO" && status !== "CANCELADO" && status !== "ISENTO";
+
+    return {
+      mes,
+      ano,
+      status,
+      isPago,
+      isValido,
+      // Se está pago mas valor_pago veio 0/nulo, utiliza valor_previsto
+      valorPago: isPago ? (valorPagoNum || valorPrevistoNum || 0) : 0,
+      valorPrevisto: valorPrevistoNum || valorPagoNum || 0,
+    };
+  };
+
+  // --- KPIs Principais ---
+  const matriculasAtivas = matriculas.filter(m => m.status_matricula === "ATIVA").length;
+
+  const pagamentosPendentes = useMemo(() => {
+    return pagamentos.filter(p => {
+      const { status } = parsePayment(p);
+      return status === "PENDENTE" || status === "ATRASADO" || status === "PREVISTO";
+    }).length;
+  }, [pagamentos]);
+
+  const receitaTotal = useMemo(() => {
+    return pagamentos.reduce((acc, p) => {
+      const info = parsePayment(p);
+      return acc + info.valorPago;
+    }, 0);
+  }, [pagamentos]);
+
+  const inadimplentes = useMemo(() => {
+    return pagamentos.filter(p => parsePayment(p).status === "ATRASADO").length;
+  }, [pagamentos]);
+
+  const novosAlunosMes = useMemo(() => {
+    const now = new Date();
+    return alunos.filter(a => {
+      if (!a.data_cadastro) return false;
+      const d = new Date(a.data_cadastro);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+  }, [alunos]);
+
+  const taxaAdimplencia = useMemo(() => {
+    const total = pagamentos.length;
+    if (total === 0) return 100;
+    const pagos = pagamentos.filter(p => parsePayment(p).isPago).length;
+    return Math.round((pagos / total) * 100);
+  }, [pagamentos]);
+
+  // Âncora de data para o gráfico de receita (usa mês atual se houver dados ou o mais recente presente no banco)
+  const refDateReceita = useMemo(() => {
+    const now = new Date();
+    let maxAno = 0;
+    let maxMes = 0;
+    let temAnoAtual = false;
+
+    // Checa pagamentos
+    if (pagamentos && pagamentos.length > 0) {
+      for (const p of pagamentos) {
+        const { mes, ano, isValido } = parsePayment(p);
+        if (isValido && ano && mes) {
+          if (ano === now.getFullYear()) {
+            temAnoAtual = true;
+          }
+          if (ano > maxAno || (ano === maxAno && mes > maxMes)) {
+            maxAno = ano;
+            maxMes = mes;
+          }
+        }
+      }
+    }
+
+    // Checa matrículas
+    if (matriculas && matriculas.length > 0) {
+      for (const m of matriculas) {
+        if (m.data_inicio) {
+          const d = new Date(m.data_inicio);
+          if (!isNaN(d.getTime())) {
+            const ano = d.getFullYear();
+            const mes = d.getMonth() + 1;
+            if (ano === now.getFullYear()) {
+              temAnoAtual = true;
+            }
+            if (ano > maxAno || (ano === maxAno && mes > maxMes)) {
+              maxAno = ano;
+              maxMes = mes;
+            }
+          }
+        }
+      }
+    }
+
+    if (temAnoAtual || maxAno === 0) {
+      return now;
+    }
+
+    return new Date(maxAno, maxMes - 1, 1);
+  }, [pagamentos, matriculas]);
 
   // --- Gráfico 1: Receita por Mês ---
   const receitaPorMes = useMemo(() => {
-    const now = new Date();
     const mesesQtd = periodo === "6m" ? 6 : 12;
     return Array.from({ length: mesesQtd }, (_, i) => {
-      const d = new Date(now.getFullYear(), now.getMonth() - (mesesQtd - 1) + i, 1);
+      const d = new Date(refDateReceita.getFullYear(), refDateReceita.getMonth() - (mesesQtd - 1) + i, 1);
       const mes = d.getMonth();
       const ano = d.getFullYear();
-      const recebido = pagamentos
-        .filter(p => p.status_pagamento === "PAGO" && p.mes_referencia === mes + 1 && p.ano_referencia === ano)
-        .reduce((s, p) => s + (p.valor_pago || 0), 0);
-      const previsto = pagamentos
-        .filter(p => p.mes_referencia === mes + 1 && p.ano_referencia === ano)
-        .reduce((s, p) => s + (p.valor_previsto || 0), 0);
-      return { mes: MESES[mes], recebido, previsto };
+
+      let recebido = 0;
+      let previsto = 0;
+
+      // 1. Pagamentos específicos lançados para o mês
+      pagamentos.forEach(p => {
+        const info = parsePayment(p);
+        if (info.mes === mes + 1 && info.ano === ano) {
+          if (info.isPago) {
+            recebido += info.valorPago;
+          }
+          if (info.isValido) {
+            previsto += info.valorPrevisto;
+          }
+        }
+      });
+
+      // 2. Receita prevista calculada com base nas matrículas ativas no período
+      const previstoMatriculas = matriculas
+        .filter(m => {
+          if (m.status_matricula !== "ATIVA" && m.status_matricula !== "PENDENTE_LIBERACAO") return false;
+          if (m.data_inicio) {
+            const dtInicio = new Date(m.data_inicio);
+            const fimDoMes = new Date(ano, mes + 1, 0);
+            if (dtInicio > fimDoMes) return false;
+          }
+          if (m.data_fim_prevista) {
+            const dtFim = new Date(m.data_fim_prevista);
+            const inicioDoMes = new Date(ano, mes, 1);
+            if (dtFim < inicioDoMes) return false;
+          }
+          return true;
+        })
+        .reduce((s, m) => s + (Number(m.valor_final) || 0), 0);
+
+      // Se houver pagamentos ou matrículas ativas, considera o valor real esperado
+      previsto = Math.max(previsto, previstoMatriculas);
+
+      return {
+        mes: MESES[mes],
+        labelCompleto: `${MESES[mes]} de ${ano}`,
+        recebido,
+        previsto,
+      };
     });
-  }, [pagamentos, periodo]);
+  }, [pagamentos, matriculas, periodo, refDateReceita]);
 
   // --- Gráfico 2: Status de Matrículas (Donut) ---
   const statusMatriculas = useMemo(() => {
     const counts: Record<string, number> = {};
-    matriculas.forEach(m => { counts[m.status_matricula] = (counts[m.status_matricula] || 0) + 1; });
+    matriculas.forEach(m => {
+      const st = m.status_matricula || "OUTRO";
+      counts[st] = (counts[st] || 0) + 1;
+    });
     return Object.entries(counts).map(([name, value]) => ({ name: name.replace(/_/g, " "), value }));
   }, [matriculas]);
 
-  // --- Gráfico 3: Status de Pagamentos (Donut) ---
-  const statusPagamentos = useMemo(() => {
-    const counts: Record<string, number> = {};
-    pagamentos.forEach(p => { counts[p.status_pagamento] = (counts[p.status_pagamento] || 0) + 1; });
-    return Object.entries(counts).map(([name, value]) => ({ name: name.replace(/_/g, " "), value }));
-  }, [pagamentos]);
-
-  // --- Gráfico 4: Evolução de Alunos ---
+  // --- Gráfico 4: Evolução de Novos Alunos ---
   const alunosPorMes = useMemo(() => {
-    const now = new Date();
+    let refDate = new Date();
+    if (alunos.length > 0) {
+      let maxYear = 0;
+      let maxMonth = 0;
+      let temAnoAtual = false;
+      alunos.forEach(a => {
+        if (a.data_cadastro) {
+          const d = new Date(a.data_cadastro);
+          if (!isNaN(d.getTime())) {
+            if (d.getFullYear() === refDate.getFullYear()) temAnoAtual = true;
+            if (d.getFullYear() > maxYear || (d.getFullYear() === maxYear && d.getMonth() > maxMonth)) {
+              maxYear = d.getFullYear();
+              maxMonth = d.getMonth();
+            }
+          }
+        }
+      });
+      if (!temAnoAtual && maxYear > 0) {
+        refDate = new Date(maxYear, maxMonth, 1);
+      }
+    }
+
     return Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+      const d = new Date(refDate.getFullYear(), refDate.getMonth() - 5 + i, 1);
       const prox = new Date(d.getFullYear(), d.getMonth() + 1, 1);
       const total = alunos.filter(a => {
-        const dt = new Date(a.data_cadastro || "");
+        if (!a.data_cadastro) return false;
+        const dt = new Date(a.data_cadastro);
         return dt >= d && dt < prox;
       }).length;
-      return { mes: MESES[d.getMonth()], novos: total };
+      return {
+        mes: MESES[d.getMonth()],
+        labelCompleto: `${MESES[d.getMonth()]} de ${d.getFullYear()}`,
+        novos: total,
+      };
     });
   }, [alunos]);
 
@@ -194,7 +400,7 @@ export default function Dashboard() {
             </p>
             <div className="flex items-center gap-2 text-emerald-400 text-xs font-medium pt-1">
               <TrendingUp className="w-4 h-4" />
-              <span>{pagamentos.filter(p => p.status_pagamento === "PAGO").length} pagamentos liquidados com sucesso</span>
+              <span>{pagamentos.filter(p => parsePayment(p).isPago).length} pagamentos liquidados com sucesso</span>
             </div>
           </div>
 
@@ -256,13 +462,13 @@ export default function Dashboard() {
             <div className="flex items-center gap-1.5 bg-white/5 p-1 rounded-xl border border-white/10 text-xs">
               <button
                 onClick={() => setPeriodo("6m")}
-                className={`px-2.5 py-1 rounded-lg transition-all ${periodo === "6m" ? "bg-primary/20 text-primary font-semibold border border-primary/30" : "text-muted-foreground hover:text-foreground"}`}
+                className={`px-2.5 py-1 rounded-lg transition-all ${periodo === "6m" ? "bg-primary/20 text-white font-semibold border border-primary/40 shadow-sm" : "text-zinc-300 hover:text-white"}`}
               >
                 6 Meses
               </button>
               <button
                 onClick={() => setPeriodo("ano")}
-                className={`px-2.5 py-1 rounded-lg transition-all ${periodo === "ano" ? "bg-primary/20 text-primary font-semibold border border-primary/30" : "text-muted-foreground hover:text-foreground"}`}
+                className={`px-2.5 py-1 rounded-lg transition-all ${periodo === "ano" ? "bg-primary/20 text-white font-semibold border border-primary/40 shadow-sm" : "text-zinc-300 hover:text-white"}`}
               >
                 12 Meses
               </button>
@@ -272,20 +478,36 @@ export default function Dashboard() {
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={receitaPorMes} barGap={6}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-              <XAxis dataKey="mes" tick={{ fill: "#a1a1aa", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} />
-              <Tooltip contentStyle={customTooltipStyle} formatter={(v: any) => [`R$ ${Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, ""]} />
-              <Bar dataKey="previsto" name="Previsto" fill="#52525b" radius={[6, 6, 0, 0]} opacity={0.6} />
+              <XAxis dataKey="mes" tick={{ fill: "#d4d4d8", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis
+                tick={{ fill: "#d4d4d8", fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v: number) => {
+                  if (v === 0) return "R$ 0";
+                  if (v >= 1000000) return `R$ ${(v / 1000000).toFixed(1)}M`;
+                  if (v >= 1000) return `R$ ${(v / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}k`;
+                  return `R$ ${v}`;
+                }}
+              />
+              <Tooltip cursor={false} content={<CustomTooltip />} />
+              <Bar dataKey="previsto" name="Previsto" fill="#71717a" radius={[6, 6, 0, 0]} opacity={0.75} />
               <Bar dataKey="recebido" name="Recebido" fill="#10b981" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
 
-          <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-white/5">
+          <div className="flex items-center justify-between text-xs pt-2 border-t border-white/5">
             <div className="flex gap-4">
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block" />Recebido</span>
-              <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-zinc-500 inline-block" />Previsto</span>
+              <span className="flex items-center gap-1.5 text-white font-semibold">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block shadow-sm shadow-emerald-500/50" />
+                Recebido
+              </span>
+              <span className="flex items-center gap-1.5 text-white font-semibold">
+                <span className="w-2.5 h-2.5 rounded-full bg-zinc-400 inline-block shadow-sm" />
+                Previsto
+              </span>
             </div>
-            <Link to="/pagamentos" className="hover:text-foreground flex items-center gap-1 text-[11px]">
+            <Link to="/pagamentos" className="text-zinc-300 hover:text-white flex items-center gap-1 text-[11px] transition-colors">
               Ver financeiro completo <ArrowUpRight className="w-3 h-3" />
             </Link>
           </div>
@@ -310,8 +532,13 @@ export default function Dashboard() {
                 <Pie data={statusMatriculas} cx="50%" cy="50%" innerRadius={58} outerRadius={85} paddingAngle={4} dataKey="value">
                   {statusMatriculas.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                 </Pie>
-                <Tooltip contentStyle={customTooltipStyle} />
-                <Legend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: 11, color: "#a1a1aa" }} />
+                <Tooltip content={<CustomPieTooltip />} />
+                <Legend
+                  iconSize={8}
+                  iconType="circle"
+                  wrapperStyle={{ fontSize: 11, color: "#ffffff", paddingTop: "8px" }}
+                  formatter={(value) => <span className="text-white font-medium ml-1" style={{ color: "#ffffff" }}>{value}</span>}
+                />
               </PieChart>
             </ResponsiveContainer>
           )}
@@ -339,9 +566,15 @@ export default function Dashboard() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-              <XAxis dataKey="mes" tick={{ fill: "#a1a1aa", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip contentStyle={customTooltipStyle} />
+              <XAxis dataKey="mes" tick={{ fill: "#d4d4d8", fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#d4d4d8", fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <Tooltip cursor={false} content={<CustomTooltip />} />
+              <Legend
+                iconSize={8}
+                iconType="circle"
+                wrapperStyle={{ fontSize: 11, color: "#ffffff", paddingTop: "8px" }}
+                formatter={(value) => <span className="text-white font-medium ml-1" style={{ color: "#ffffff" }}>{value}</span>}
+              />
               <Area
                 type="monotone"
                 dataKey="novos"

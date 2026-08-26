@@ -4,25 +4,25 @@ import { generateId, generateCPF, randomName, randomPhone, randomEmail, randomDa
 
 // 1. Catálogo Completo de Modalidades
 const modalidadesCatalog = [
-  { id: "PWRJUMP1", nome: "Power Jump", area: "Fitness", valor: 140 },
-  { id: "BODYPMP1", nome: "BodyPump", area: "Fitness", valor: 140 },
-  { id: "YOGA0001", nome: "Yoga", area: "Bem-Estar", valor: 130 },
-  { id: "BALLET01", nome: "Ballet Infantil", area: "Dança", valor: 150 },
-  { id: "GINRIT01", nome: "Ginástica Rítmica", area: "Esportes", valor: 150 },
-  { id: "TEATRO01", nome: "Teatro", area: "Artes", valor: 120 },
-  { id: "CAPOEIR1", nome: "Capoeira", area: "Artes Marciais", valor: 110 },
-  { id: "KICKBOX1", nome: "Kickboxing", area: "Artes Marciais", valor: 140 },
   { id: "JIUJITS1", nome: "Jiu-Jitsu", area: "Artes Marciais", valor: 140 },
-  { id: "PIL2X001", nome: "Pilates", area: "Bem-Estar", valor: 130 },
-  { id: "TAEKWON1", nome: "Taekwondo", area: "Artes Marciais", valor: 140 },
-  { id: "DESPIN01", nome: "Desenho e Pintura", area: "Artes", valor: 100 },
-  { id: "FUNCPWR1", nome: "Funcional", area: "Fitness", valor: 140 },
+  { id: "KICKBOX1", nome: "Kickboxing", area: "Artes Marciais", valor: 140 },
   { id: "KARATE01", nome: "Karatê", area: "Artes Marciais", valor: 120 },
+  { id: "TAEKWON1", nome: "Taekwondo", area: "Artes Marciais", valor: 140 },
+  { id: "CAPOEIR1", nome: "Capoeira", area: "Artes Marciais", valor: 110 },
+  { id: "BALLET01", nome: "Ballet", area: "Dança", valor: 150 },
+  { id: "GINRIT01", nome: "Ginástica Rítmica", area: "Esportes", valor: 150 },
+  { id: "DESPIN01", nome: "Desenho e Pintura", area: "Artes", valor: 100 },
   { id: "CANTO001", nome: "Canto", area: "Artes", valor: 120 },
-  { id: "TAICHI01", nome: "Tai Chi Chuan", area: "Bem-Estar", valor: 130 },
-  { id: "PIL3X001", nome: "Pilates 3X", area: "Bem-Estar", valor: 180 },
+  { id: "TEATRO01", nome: "Teatro", area: "Artes", valor: 120 },
   { id: "CROCHE01", nome: "Crochê", area: "Artesanato", valor: 90 },
   { id: "TRICO001", nome: "Tricô", area: "Artesanato", valor: 90 },
+  { id: "YOGA0001", nome: "Yoga", area: "Bem-Estar", valor: 130 },
+  { id: "PIL2X001", nome: "Pilates 2X", area: "Bem-Estar", valor: 130 },
+  { id: "PIL3X001", nome: "Pilates 3X", area: "Bem-Estar", valor: 180 },
+  { id: "TAICHI01", nome: "Tai Chi Chuan", area: "Bem-Estar", valor: 130 },
+  { id: "PWRJUMP1", nome: "Power Jump", area: "Fitness", valor: 140 },
+  { id: "BODYPMP1", nome: "BodyPump", area: "Fitness", valor: 140 },
+  { id: "FUNCPWR1", nome: "Funcional", area: "Fitness", valor: 140 },
 ];
 
 function escapeSql(val: any): string {
@@ -38,7 +38,7 @@ function escapeSql(val: any): string {
 function generateSqlSeed() {
   const sqlLines: string[] = [
     '-- =========================================================================',
-    '-- MOVI+ MCJB - Data Seed SQL (Grade Oficial & Modalidades)',
+    '-- MOVI+ MCJB - Data Seed SQL (Grade Completa com Turmas Oficiais)',
     '-- Copie e cole este script no Supabase SQL Editor para popular o banco de dados.',
     '-- =========================================================================',
     'BEGIN;',
@@ -82,8 +82,8 @@ function generateSqlSeed() {
       telefone: "(61) 98111-2233",
       email: "carlos.artesmarciais@movi.test",
       funcao: "INSTRUTOR_PRINCIPAL",
-      especialidades: ["Jiu-Jitsu", "Karatê", "Capoeira", "Kickboxing", "Taekwondo"],
-      id_modalidades: ["JIUJITS1", "KARATE01", "CAPOEIR1", "KICKBOX1", "TAEKWON1"],
+      especialidades: ["Jiu-Jitsu", "Kickboxing", "Karatê", "Taekwondo", "Capoeira"],
+      id_modalidades: ["JIUJITS1", "KICKBOX1", "KARATE01", "TAEKWON1", "CAPOEIR1"],
       ativo: true
     },
     {
@@ -93,7 +93,7 @@ function generateSqlSeed() {
       telefone: "(61) 98222-3344",
       email: "amanda.danca@movi.test",
       funcao: "INSTRUTOR_PRINCIPAL",
-      especialidades: ["Ballet Infantil", "Ginástica Rítmica"],
+      especialidades: ["Ballet", "Ginástica Rítmica"],
       id_modalidades: ["BALLET01", "GINRIT01"],
       ativo: true
     },
@@ -104,8 +104,8 @@ function generateSqlSeed() {
       telefone: "(61) 98333-4455",
       email: "juliana.bemestar@movi.test",
       funcao: "INSTRUTOR_PRINCIPAL",
-      especialidades: ["Pilates", "Yoga", "Tai Chi Chuan"],
-      id_modalidades: ["PIL2X001", "YOGA0001", "TAICHI01"],
+      especialidades: ["Pilates 2X", "Pilates 3X", "Yoga", "Tai Chi Chuan"],
+      id_modalidades: ["PIL2X001", "PIL3X001", "YOGA0001", "TAICHI01"],
       ativo: true
     },
     {
@@ -126,8 +126,8 @@ function generateSqlSeed() {
       telefone: "(61) 98555-6677",
       email: "beatriz.artes@movi.test",
       funcao: "INSTRUTOR_PRINCIPAL",
-      especialidades: ["Desenho e Pintura", "Teatro", "Canto"],
-      id_modalidades: ["DESPIN01", "TEATRO01", "CANTO001"],
+      especialidades: ["Desenho e Pintura", "Teatro", "Canto", "Crochê", "Tricô"],
+      id_modalidades: ["DESPIN01", "TEATRO01", "CANTO001", "CROCHE01", "TRICO001"],
       ativo: true
     }
   ];
@@ -143,342 +143,66 @@ function generateSqlSeed() {
   }
   sqlLines.push('');
 
-  // 3. TURMAS (Grade Semanal Fixa Solicitada pelo Usuário)
-  const turmasGrade = [
-    // 1. Power Jump (Segunda, Quarta, Sexta)
+  // 3. TURMAS (Lista Oficial Completa fornecida pelo usuário)
+  const turmasOficiais = [
+    // ----------------------------------------------------
+    // JIU-JITSU
+    // ----------------------------------------------------
     {
-      id: "TURMA_PJ01",
-      id_modalidade: "PWRJUMP1",
-      id_instrutor: "INST0004",
-      nome_turma: "Power Jump - Seg/Qua/Sex Manhã",
-      faixa_etaria: "Livre (Adulto)",
-      capacidade_maxima: 25,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Segunda", "Quarta", "Sexta"],
-      horario_inicio: "08:00:00",
-      horario_fim: "09:00:00",
-      sala: "Espaço Fitness"
-    },
-    {
-      id: "TURMA_PJ02",
-      id_modalidade: "PWRJUMP1",
-      id_instrutor: "INST0004",
-      nome_turma: "Power Jump - Seg/Qua/Sex Noite",
-      faixa_etaria: "Livre (Adulto)",
-      capacidade_maxima: 25,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Segunda", "Quarta", "Sexta"],
-      horario_inicio: "18:30:00",
-      horario_fim: "19:30:00",
-      sala: "Espaço Fitness"
-    },
-
-    // 2. BodyPump (Segunda, Quarta, Sexta)
-    {
-      id: "TURMA_BP01",
-      id_modalidade: "BODYPMP1",
-      id_instrutor: "INST0004",
-      nome_turma: "BodyPump - Seg/Qua/Sex Manhã",
-      faixa_etaria: "Livre (Adulto)",
-      capacidade_maxima: 20,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Segunda", "Quarta", "Sexta"],
-      horario_inicio: "09:00:00",
-      horario_fim: "10:00:00",
-      sala: "Espaço Fitness"
-    },
-    {
-      id: "TURMA_BP02",
-      id_modalidade: "BODYPMP1",
-      id_instrutor: "INST0004",
-      nome_turma: "BodyPump - Seg/Qua/Sex Noite",
-      faixa_etaria: "Livre (Adulto)",
-      capacidade_maxima: 20,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Segunda", "Quarta", "Sexta"],
-      horario_inicio: "19:30:00",
-      horario_fim: "20:30:00",
-      sala: "Espaço Fitness"
-    },
-
-    // 3. Yoga (Segunda e Quarta)
-    {
-      id: "TURMA_YOG01",
-      id_modalidade: "YOGA0001",
-      id_instrutor: "INST0003",
-      nome_turma: "Yoga - Seg/Qua Manhã",
-      faixa_etaria: "Livre",
-      capacidade_maxima: 20,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Segunda", "Quarta"],
-      horario_inicio: "07:30:00",
-      horario_fim: "08:30:00",
-      sala: "Sala Bem-Estar"
-    },
-
-    // 4. Yoga (Terça e Quinta)
-    {
-      id: "TURMA_YOG02",
-      id_modalidade: "YOGA0001",
-      id_instrutor: "INST0003",
-      nome_turma: "Yoga - Ter/Qui Tarde",
-      faixa_etaria: "Livre",
-      capacidade_maxima: 20,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Terça", "Quinta"],
-      horario_inicio: "17:30:00",
-      horario_fim: "18:30:00",
-      sala: "Sala Bem-Estar"
-    },
-
-    // 5. Ballet Infantil (Segunda e Quarta)
-    {
-      id: "TURMA_BAL01",
-      id_modalidade: "BALLET01",
-      id_instrutor: "INST0002",
-      nome_turma: "Ballet Infantil - Seg/Qua Manhã",
-      faixa_etaria: "4 a 10 anos",
-      capacidade_maxima: 18,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Segunda", "Quarta"],
-      horario_inicio: "09:30:00",
-      horario_fim: "10:30:00",
-      sala: "Sala 2 - Dança"
-    },
-
-    // 6. Ginástica Rítmica Infantil (Segunda e Quarta)
-    {
-      id: "TURMA_GR01",
-      id_modalidade: "GINRIT01",
-      id_instrutor: "INST0002",
-      nome_turma: "Ginástica Rítmica Infantil",
-      faixa_etaria: "6 a 12 anos",
-      capacidade_maxima: 18,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Segunda", "Quarta"],
-      horario_inicio: "10:30:00",
-      horario_fim: "11:30:00",
-      sala: "Sala 2 - Dança"
-    },
-
-    // 7. Ginástica Rítmica Adulto (Segunda e Quarta)
-    {
-      id: "TURMA_GR02",
-      id_modalidade: "GINRIT01",
-      id_instrutor: "INST0002",
-      nome_turma: "Ginástica Rítmica Adulto",
-      faixa_etaria: "Adulto",
-      capacidade_maxima: 20,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Segunda", "Quarta"],
-      horario_inicio: "17:30:00",
-      horario_fim: "18:30:00",
-      sala: "Sala 2 - Dança"
-    },
-
-    // 8. Teatro (Segunda)
-    {
-      id: "TURMA_TEA01",
-      id_modalidade: "TEATRO01",
-      id_instrutor: "INST0005",
-      nome_turma: "Teatro & Expressão Corporal",
-      faixa_etaria: "Livre (a partir de 10 anos)",
-      capacidade_maxima: 25,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Segunda"],
-      horario_inicio: "15:00:00",
-      horario_fim: "17:00:00",
-      sala: "Ateliê / Sala de Artes"
-    },
-
-    // 9. Capoeira (Segunda e Quarta)
-    {
-      id: "TURMA_CAP01",
-      id_modalidade: "CAPOEIR1",
-      id_instrutor: "INST0001",
-      nome_turma: "Capoeira Regional - Seg/Qua",
-      faixa_etaria: "Livre",
-      capacidade_maxima: 25,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Segunda", "Quarta"],
-      horario_inicio: "19:30:00",
-      horario_fim: "20:30:00",
-      sala: "Sala 1 - Tatame"
-    },
-
-    // 10. Kickboxing (Segunda e Quarta)
-    {
-      id: "TURMA_KB01",
-      id_modalidade: "KICKBOX1",
-      id_instrutor: "INST0001",
-      nome_turma: "Kickboxing - Seg/Qua Noite",
-      faixa_etaria: "A partir de 14 anos",
-      capacidade_maxima: 20,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Segunda", "Quarta"],
-      horario_inicio: "20:30:00",
-      horario_fim: "21:30:00",
-      sala: "Sala 1 - Tatame"
-    },
-
-    // 11. Jiu-Jitsu (Segunda e Quarta)
-    {
-      id: "TURMA_JJ01",
+      id: "TURMA_JJ_T1",
       id_modalidade: "JIUJITS1",
       id_instrutor: "INST0001",
-      nome_turma: "Jiu-Jitsu Kids - Seg/Qua",
-      faixa_etaria: "6 a 13 anos",
+      nome_turma: "Jiu-Jitsu T1 (Infantil 07 a 12 anos)",
+      faixa_etaria: "Infantil 07 a 12 anos",
       capacidade_maxima: 20,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Segunda", "Quarta"],
-      horario_inicio: "18:00:00",
-      horario_fim: "19:00:00",
-      sala: "Sala 1 - Tatame"
-    },
-    {
-      id: "TURMA_JJ02",
-      id_modalidade: "JIUJITS1",
-      id_instrutor: "INST0001",
-      nome_turma: "Jiu-Jitsu Adulto - Seg/Qua",
-      faixa_etaria: "Adulto",
-      capacidade_maxima: 25,
       status_turma: "ATIVA",
       permite_experimental: true,
       dias_semana: ["Segunda", "Quarta"],
       horario_inicio: "19:00:00",
-      horario_fim: "20:30:00",
+      horario_fim: "20:00:00",
       sala: "Sala 1 - Tatame"
     },
-
-    // 12. Pilates (Terça e Quinta)
     {
-      id: "TURMA_PIL01",
-      id_modalidade: "PIL2X001",
-      id_instrutor: "INST0003",
-      nome_turma: "Pilates - Ter/Qui Manhã",
-      faixa_etaria: "Adulto",
-      capacidade_maxima: 15,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Terça", "Quinta"],
-      horario_inicio: "08:00:00",
-      horario_fim: "09:00:00",
-      sala: "Espaço Pilates"
-    },
-    {
-      id: "TURMA_PIL02",
-      id_modalidade: "PIL2X001",
-      id_instrutor: "INST0003",
-      nome_turma: "Pilates - Ter/Qui Tarde",
-      faixa_etaria: "Adulto",
-      capacidade_maxima: 15,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Terça", "Quinta"],
-      horario_inicio: "17:00:00",
-      horario_fim: "18:00:00",
-      sala: "Espaço Pilates"
-    },
-
-    // 13. Pilates (Sábado)
-    {
-      id: "TURMA_PIL03",
-      id_modalidade: "PIL2X001",
-      id_instrutor: "INST0003",
-      nome_turma: "Pilates - Sábado Matutino",
-      faixa_etaria: "Adulto",
-      capacidade_maxima: 15,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Sábado"],
-      horario_inicio: "09:30:00",
-      horario_fim: "10:30:00",
-      sala: "Espaço Pilates"
-    },
-
-    // 14. Taekwondo (Terça e Quinta)
-    {
-      id: "TURMA_TKD01",
-      id_modalidade: "TAEKWON1",
+      id: "TURMA_JJ_T2",
+      id_modalidade: "JIUJITS1",
       id_instrutor: "INST0001",
-      nome_turma: "Taekwondo - Ter/Qui",
-      faixa_etaria: "7 a 15 anos",
-      capacidade_maxima: 20,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Terça", "Quinta"],
-      horario_inicio: "18:00:00",
-      horario_fim: "19:00:00",
-      sala: "Sala 1 - Tatame"
-    },
-
-    // 15. Desenho e Pintura (Terça e Quinta)
-    {
-      id: "TURMA_DES01",
-      id_modalidade: "DESPIN01",
-      id_instrutor: "INST0005",
-      nome_turma: "Desenho e Pintura - Ter/Qui",
-      faixa_etaria: "Livre (a partir de 8 anos)",
-      capacidade_maxima: 15,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Terça", "Quinta"],
-      horario_inicio: "14:30:00",
-      horario_fim: "16:00:00",
-      sala: "Ateliê de Artes"
-    },
-
-    // 16. Desenho e Pintura (Sábado)
-    {
-      id: "TURMA_DES02",
-      id_modalidade: "DESPIN01",
-      id_instrutor: "INST0005",
-      nome_turma: "Desenho e Pintura - Sábado",
-      faixa_etaria: "Livre",
-      capacidade_maxima: 18,
-      status_turma: "ATIVA",
-      permite_experimental: true,
-      dias_semana: ["Sábado"],
-      horario_inicio: "09:00:00",
-      horario_fim: "11:00:00",
-      sala: "Ateliê de Artes"
-    },
-
-    // 17. Funcional (Terça)
-    {
-      id: "TURMA_FUNC01",
-      id_modalidade: "FUNCPWR1",
-      id_instrutor: "INST0004",
-      nome_turma: "Funcional Power - Terça",
-      faixa_etaria: "Livre (Adulto)",
+      nome_turma: "Jiu-Jitsu T2 (Juvenil/Adulto +13 anos)",
+      faixa_etaria: "Juvenil/Adulto +13 anos",
       capacidade_maxima: 25,
       status_turma: "ATIVA",
       permite_experimental: true,
-      dias_semana: ["Terça"],
-      horario_inicio: "07:00:00",
-      horario_fim: "08:00:00",
-      sala: "Espaço Fitness"
+      dias_semana: ["Segunda", "Quarta"],
+      horario_inicio: "20:00:00",
+      horario_fim: "21:00:00",
+      sala: "Sala 1 - Tatame"
     },
 
-    // 18. Karatê (Terça e Quinta)
+    // ----------------------------------------------------
+    // KICKBOXING
+    // ----------------------------------------------------
     {
-      id: "TURMA_KAR01",
+      id: "TURMA_KB_T1",
+      id_modalidade: "KICKBOX1",
+      id_instrutor: "INST0001",
+      nome_turma: "Kickboxing T1 (A partir de 08 anos)",
+      faixa_etaria: "A partir de 08 anos",
+      capacidade_maxima: 20,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Segunda", "Quarta"],
+      horario_inicio: "20:00:00",
+      horario_fim: "21:00:00",
+      sala: "Sala 1 - Tatame"
+    },
+
+    // ----------------------------------------------------
+    // KARATÊ
+    // ----------------------------------------------------
+    {
+      id: "TURMA_KAR_T1",
       id_modalidade: "KARATE01",
       id_instrutor: "INST0001",
-      nome_turma: "Karatê Do Tradicional - Ter/Qui",
+      nome_turma: "Karatê T1 (Infantil/Juvenil/Adulto)",
       faixa_etaria: "Livre",
       capacidade_maxima: 20,
       status_turma: "ATIVA",
@@ -489,58 +213,484 @@ function generateSqlSeed() {
       sala: "Sala 1 - Tatame"
     },
 
-    // 19. Canto (Quinta)
+    // ----------------------------------------------------
+    // TAEKWONDO
+    // ----------------------------------------------------
     {
-      id: "TURMA_CAN01",
+      id: "TURMA_TKD_T1",
+      id_modalidade: "TAEKWON1",
+      id_instrutor: "INST0001",
+      nome_turma: "Taekwondo T1 (Infantil/Juvenil a partir de 05 anos)",
+      faixa_etaria: "Infantil/Juvenil a partir de 05 anos",
+      capacidade_maxima: 20,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Terça", "Quinta"],
+      horario_inicio: "16:00:00",
+      horario_fim: "17:00:00",
+      sala: "Sala 1 - Tatame"
+    },
+
+    // ----------------------------------------------------
+    // CAPOEIRA
+    // ----------------------------------------------------
+    {
+      id: "TURMA_CAP_T1",
+      id_modalidade: "CAPOEIR1",
+      id_instrutor: "INST0001",
+      nome_turma: "Capoeira T1 (Juvenil/Adulto +12 anos)",
+      faixa_etaria: "Juvenil/Adulto +12 anos",
+      capacidade_maxima: 25,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Segunda", "Quarta"],
+      horario_inicio: "19:30:00",
+      horario_fim: "20:30:00",
+      sala: "Sala 1 - Tatame"
+    },
+
+    // ----------------------------------------------------
+    // BALLET
+    // ----------------------------------------------------
+    {
+      id: "TURMA_BAL_T1",
+      id_modalidade: "BALLET01",
+      id_instrutor: "INST0002",
+      nome_turma: "Ballet T1 Infantil (4 a 10 anos)",
+      faixa_etaria: "Infantil (4 a 10 anos)",
+      capacidade_maxima: 18,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Segunda", "Quarta"],
+      horario_inicio: "09:00:00",
+      horario_fim: "10:00:00",
+      sala: "Sala 2 - Dança"
+    },
+    {
+      id: "TURMA_BAL_T2",
+      id_modalidade: "BALLET01",
+      id_instrutor: "INST0002",
+      nome_turma: "Ballet T2 Infantil (4 a 10 anos)",
+      faixa_etaria: "Infantil (4 a 10 anos)",
+      capacidade_maxima: 18,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Segunda", "Quarta"],
+      horario_inicio: "17:00:00",
+      horario_fim: "18:00:00",
+      sala: "Sala 2 - Dança"
+    },
+
+    // ----------------------------------------------------
+    // GINÁSTICA RÍTMICA
+    // ----------------------------------------------------
+    {
+      id: "TURMA_GR_T2",
+      id_modalidade: "GINRIT01",
+      id_instrutor: "INST0002",
+      nome_turma: "Ginástica Rítmica T2 Infantil (4 a 8 anos)",
+      faixa_etaria: "Infantil (4 a 8 anos)",
+      capacidade_maxima: 18,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Segunda", "Quarta"],
+      horario_inicio: "16:00:00",
+      horario_fim: "17:00:00",
+      sala: "Sala 2 - Dança"
+    },
+    {
+      id: "TURMA_GR_T3",
+      id_modalidade: "GINRIT01",
+      id_instrutor: "INST0002",
+      nome_turma: "Ginástica Rítmica T3 Teen (A partir de 9 anos)",
+      faixa_etaria: "Teen (A partir de 9 anos)",
+      capacidade_maxima: 20,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Segunda", "Quarta"],
+      horario_inicio: "17:00:00",
+      horario_fim: "18:00:00",
+      sala: "Sala 2 - Dança"
+    },
+
+    // ----------------------------------------------------
+    // DESENHO E PINTURA
+    // ----------------------------------------------------
+    {
+      id: "TURMA_DES_T1",
+      id_modalidade: "DESPIN01",
+      id_instrutor: "INST0005",
+      nome_turma: "Desenho e Pintura T1 (Infantil/Adulto)",
+      faixa_etaria: "Infantil/Adulto",
+      capacidade_maxima: 15,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Terça"],
+      horario_inicio: "16:00:00",
+      horario_fim: "18:00:00",
+      sala: "Ateliê de Artes"
+    },
+    {
+      id: "TURMA_DES_T2",
+      id_modalidade: "DESPIN01",
+      id_instrutor: "INST0005",
+      nome_turma: "Desenho e Pintura T2 (Infantil/Adulto)",
+      faixa_etaria: "Infantil/Adulto",
+      capacidade_maxima: 15,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Quinta"],
+      horario_inicio: "16:00:00",
+      horario_fim: "18:00:00",
+      sala: "Ateliê de Artes"
+    },
+    {
+      id: "TURMA_DES_T3",
+      id_modalidade: "DESPIN01",
+      id_instrutor: "INST0005",
+      nome_turma: "Desenho e Pintura T3 (Infantil/Adulto)",
+      faixa_etaria: "Infantil/Adulto",
+      capacidade_maxima: 18,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Sábado"],
+      horario_inicio: "08:00:00",
+      horario_fim: "10:00:00",
+      sala: "Ateliê de Artes"
+    },
+    {
+      id: "TURMA_DES_T4",
+      id_modalidade: "DESPIN01",
+      id_instrutor: "INST0005",
+      nome_turma: "Desenho e Pintura T4 (Infantil/Adulto)",
+      faixa_etaria: "Infantil/Adulto",
+      capacidade_maxima: 18,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Sábado"],
+      horario_inicio: "10:00:00",
+      horario_fim: "12:00:00",
+      sala: "Ateliê de Artes"
+    },
+
+    // ----------------------------------------------------
+    // CANTO
+    // ----------------------------------------------------
+    {
+      id: "TURMA_CAN_T1",
       id_modalidade: "CANTO001",
       id_instrutor: "INST0005",
-      nome_turma: "Técnica Vocal & Canto",
-      faixa_etaria: "Livre",
+      nome_turma: "Canto T1 (Adulto +16 anos)",
+      faixa_etaria: "Adulto +16 anos",
       capacidade_maxima: 15,
       status_turma: "ATIVA",
       permite_experimental: true,
       dias_semana: ["Quinta"],
       horario_inicio: "15:00:00",
-      horario_fim: "16:30:00",
-      sala: "Sala 2 - Dança"
+      horario_fim: "15:50:00",
+      sala: "Sala 2 - Dança / Música"
+    },
+    {
+      id: "TURMA_CAN_T2",
+      id_modalidade: "CANTO001",
+      id_instrutor: "INST0005",
+      nome_turma: "Canto T2 (Infantil/Juvenil 10 a 15 anos)",
+      faixa_etaria: "Infantil/Juvenil 10 a 15 anos",
+      capacidade_maxima: 15,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Quinta"],
+      horario_inicio: "18:00:00",
+      horario_fim: "18:50:00",
+      sala: "Sala 2 - Dança / Música"
+    },
+    {
+      id: "TURMA_CAN_T3",
+      id_modalidade: "CANTO001",
+      id_instrutor: "INST0005",
+      nome_turma: "Canto T3 (Adulto +16 anos)",
+      faixa_etaria: "Adulto +16 anos",
+      capacidade_maxima: 15,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Quinta"],
+      horario_inicio: "19:00:00",
+      horario_fim: "19:50:00",
+      sala: "Sala 2 - Dança / Música"
     },
 
-    // 20. Tai Chi Chuan (Sábado)
+    // ----------------------------------------------------
+    // TEATRO
+    // ----------------------------------------------------
     {
-      id: "TURMA_TCC01",
+      id: "TURMA_TEA_T1",
+      id_modalidade: "TEATRO01",
+      id_instrutor: "INST0005",
+      nome_turma: "Teatro T1 (Infantil/Adulto +08 anos)",
+      faixa_etaria: "Infantil/Adulto +08 anos",
+      capacidade_maxima: 25,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Segunda"],
+      horario_inicio: "19:00:00",
+      horario_fim: "21:00:00",
+      sala: "Ateliê / Sala de Artes"
+    },
+
+    // ----------------------------------------------------
+    // CROCHÊ
+    // ----------------------------------------------------
+    {
+      id: "TURMA_CRO_T1",
+      id_modalidade: "CROCHE01",
+      id_instrutor: "INST0005",
+      nome_turma: "Crochê T1 (+13 anos)",
+      faixa_etaria: "+13 anos",
+      capacidade_maxima: 15,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Quinta"],
+      horario_inicio: "14:00:00",
+      horario_fim: "16:00:00",
+      sala: "Ateliê de Artesanato"
+    },
+    {
+      id: "TURMA_CRO_T3",
+      id_modalidade: "CROCHE01",
+      id_instrutor: "INST0005",
+      nome_turma: "Crochê T3 (+13 anos)",
+      faixa_etaria: "+13 anos",
+      capacidade_maxima: 15,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Quinta"],
+      horario_inicio: "19:00:00",
+      horario_fim: "21:00:00",
+      sala: "Ateliê de Artesanato"
+    },
+
+    // ----------------------------------------------------
+    // TRICÔ
+    // ----------------------------------------------------
+    {
+      id: "TURMA_TRI_T2",
+      id_modalidade: "TRICO001",
+      id_instrutor: "INST0005",
+      nome_turma: "Tricô T2 (+13 anos)",
+      faixa_etaria: "+13 anos",
+      capacidade_maxima: 15,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Quinta"],
+      horario_inicio: "16:00:00",
+      horario_fim: "18:00:00",
+      sala: "Ateliê de Artesanato"
+    },
+
+    // ----------------------------------------------------
+    // YOGA
+    // ----------------------------------------------------
+    {
+      id: "TURMA_YOG_T1",
+      id_modalidade: "YOGA0001",
+      id_instrutor: "INST0003",
+      nome_turma: "Yoga T1 (+15 anos)",
+      faixa_etaria: "+15 anos",
+      capacidade_maxima: 20,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Segunda", "Quarta"],
+      horario_inicio: "08:00:00",
+      horario_fim: "08:50:00",
+      sala: "Sala Bem-Estar"
+    },
+    {
+      id: "TURMA_YOG_T2",
+      id_modalidade: "YOGA0001",
+      id_instrutor: "INST0003",
+      nome_turma: "Yoga T2 (+15 anos)",
+      faixa_etaria: "+15 anos",
+      capacidade_maxima: 20,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Terça", "Quinta"],
+      horario_inicio: "19:10:00",
+      horario_fim: "20:00:00",
+      sala: "Sala Bem-Estar"
+    },
+
+    // ----------------------------------------------------
+    // PILATES
+    // ----------------------------------------------------
+    {
+      id: "TURMA_PIL_T1",
+      id_modalidade: "PIL2X001",
+      id_instrutor: "INST0003",
+      nome_turma: "Pilates T1 (2x semana - Manhã)",
+      faixa_etaria: "Juvenil/Adulto +10 anos",
+      capacidade_maxima: 15,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Terça", "Quinta"],
+      horario_inicio: "09:00:00",
+      horario_fim: "10:00:00",
+      sala: "Espaço Pilates"
+    },
+    {
+      id: "TURMA_PIL_T2",
+      id_modalidade: "PIL2X001",
+      id_instrutor: "INST0003",
+      nome_turma: "Pilates T2 (2x semana - Noite)",
+      faixa_etaria: "Juvenil/Adulto +10 anos",
+      capacidade_maxima: 15,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Terça", "Quinta"],
+      horario_inicio: "18:00:00",
+      horario_fim: "19:00:00",
+      sala: "Espaço Pilates"
+    },
+    {
+      id: "TURMA_PIL_T3",
+      id_modalidade: "PIL3X001",
+      id_instrutor: "INST0003",
+      nome_turma: "Pilates T3 (3x semana - Manhã)",
+      faixa_etaria: "Juvenil/Adulto +10 anos",
+      capacidade_maxima: 15,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Terça", "Quinta", "Sábado"],
+      horario_inicio: "09:00:00",
+      horario_fim: "10:00:00",
+      sala: "Espaço Pilates"
+    },
+    {
+      id: "TURMA_PIL_T4",
+      id_modalidade: "PIL3X001",
+      id_instrutor: "INST0003",
+      nome_turma: "Pilates T4 (3x semana - Noite/Sáb)",
+      faixa_etaria: "Juvenil/Adulto +10 anos",
+      capacidade_maxima: 15,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Terça", "Quinta", "Sábado"],
+      horario_inicio: "18:00:00",
+      horario_fim: "19:00:00",
+      sala: "Espaço Pilates"
+    },
+
+    // ----------------------------------------------------
+    // TAI CHI CHUAN
+    // ----------------------------------------------------
+    {
+      id: "TURMA_TCC_T1",
       id_modalidade: "TAICHI01",
       id_instrutor: "INST0003",
-      nome_turma: "Tai Chi Chuan - Sábado Bem-Estar",
-      faixa_etaria: "Livre",
+      nome_turma: "Tai Chi Chuan T1 (Juvenil +15 anos)",
+      faixa_etaria: "Juvenil +15 anos",
       capacidade_maxima: 25,
       status_turma: "ATIVA",
       permite_experimental: true,
       dias_semana: ["Sábado"],
       horario_inicio: "08:00:00",
-      horario_fim: "09:15:00",
+      horario_fim: "10:00:00",
       sala: "Área Aberta / Tatame"
+    },
+
+    // ----------------------------------------------------
+    // POWER JUMP & BODYPUMP & FUNCIONAL
+    // ----------------------------------------------------
+    {
+      id: "TURMA_PJ_T1",
+      id_modalidade: "PWRJUMP1",
+      id_instrutor: "INST0004",
+      nome_turma: "Power Jump T1 - Seg/Qua/Sex Manhã",
+      faixa_etaria: "Livre (Adulto)",
+      capacidade_maxima: 25,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Segunda", "Quarta", "Sexta"],
+      horario_inicio: "08:00:00",
+      horario_fim: "09:00:00",
+      sala: "Espaço Fitness"
+    },
+    {
+      id: "TURMA_PJ_T2",
+      id_modalidade: "PWRJUMP1",
+      id_instrutor: "INST0004",
+      nome_turma: "Power Jump T2 - Seg/Qua/Sex Noite",
+      faixa_etaria: "Livre (Adulto)",
+      capacidade_maxima: 25,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Segunda", "Quarta", "Sexta"],
+      horario_inicio: "18:30:00",
+      horario_fim: "19:30:00",
+      sala: "Espaço Fitness"
+    },
+    {
+      id: "TURMA_BP_T1",
+      id_modalidade: "BODYPMP1",
+      id_instrutor: "INST0004",
+      nome_turma: "BodyPump T1 - Seg/Qua/Sex Manhã",
+      faixa_etaria: "Livre (Adulto)",
+      capacidade_maxima: 20,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Segunda", "Quarta", "Sexta"],
+      horario_inicio: "09:00:00",
+      horario_fim: "10:00:00",
+      sala: "Espaço Fitness"
+    },
+    {
+      id: "TURMA_BP_T2",
+      id_modalidade: "BODYPMP1",
+      id_instrutor: "INST0004",
+      nome_turma: "BodyPump T2 - Seg/Qua/Sex Noite",
+      faixa_etaria: "Livre (Adulto)",
+      capacidade_maxima: 20,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Segunda", "Quarta", "Sexta"],
+      horario_inicio: "19:30:00",
+      horario_fim: "20:30:00",
+      sala: "Espaço Fitness"
+    },
+    {
+      id: "TURMA_FUNC_T1",
+      id_modalidade: "FUNCPWR1",
+      id_instrutor: "INST0004",
+      nome_turma: "Funcional T1 - Terça Manhã",
+      faixa_etaria: "Livre (Adulto)",
+      capacidade_maxima: 25,
+      status_turma: "ATIVA",
+      permite_experimental: true,
+      dias_semana: ["Terça"],
+      horario_inicio: "07:00:00",
+      horario_fim: "08:00:00",
+      sala: "Espaço Fitness"
     }
   ];
 
-  sqlLines.push('-- 3. Turmas com Grade Horária Fixa');
-  for (const t of turmasGrade) {
+  sqlLines.push('-- 3. Turmas Oficiais com Grade Horária Fixa');
+  for (const t of turmasOficiais) {
     sqlLines.push(
       `INSERT INTO public.turmas (id, id_modalidade, id_instrutor, nome_turma, faixa_etaria, capacidade_maxima, status_turma, permite_experimental, dias_semana, horario_inicio, horario_fim, sala) VALUES (` +
       `${escapeSql(t.id)}, ${escapeSql(t.id_modalidade)}, ${escapeSql(t.id_instrutor)}, ${escapeSql(t.nome_turma)}, ${escapeSql(t.faixa_etaria)}, ${t.capacidade_maxima}, ${escapeSql(t.status_turma)}, ${t.permite_experimental}, ` +
       `${escapeSql(t.dias_semana)}, ${escapeSql(t.horario_inicio)}, ${escapeSql(t.horario_fim)}, ${escapeSql(t.sala)}) ` +
-      `ON CONFLICT (id) DO UPDATE SET nome_turma = EXCLUDED.nome_turma, dias_semana = EXCLUDED.dias_semana, horario_inicio = EXCLUDED.horario_inicio, horario_fim = EXCLUDED.horario_fim, id_instrutor = EXCLUDED.id_instrutor, sala = EXCLUDED.sala;`
+      `ON CONFLICT (id) DO UPDATE SET nome_turma = EXCLUDED.nome_turma, faixa_etaria = EXCLUDED.faixa_etaria, dias_semana = EXCLUDED.dias_semana, horario_inicio = EXCLUDED.horario_inicio, horario_fim = EXCLUDED.horario_fim, id_instrutor = EXCLUDED.id_instrutor, sala = EXCLUDED.sala;`
     );
   }
   sqlLines.push('');
 
-  // 4. Alunos (60 alunos distribuídos pelas turmas)
-  const alunos = Array.from({ length: 60 }).map(() => {
+  // 4. Alunos (70 alunos)
+  const alunos = Array.from({ length: 70 }).map(() => {
     const nome = randomName();
     return {
       id: generateId(),
       nome_completo: nome,
       cpf: generateCPF(),
-      data_nascimento: randomDate(new Date(1980, 0, 1), new Date(2015, 11, 31)),
+      data_nascimento: randomDate(new Date(1980, 0, 1), new Date(2018, 11, 31)),
       telefone: randomPhone(),
       email: randomEmail(nome),
       endereco: "Rua das Palmeiras, 100",
@@ -563,9 +713,9 @@ function generateSqlSeed() {
   }
   sqlLines.push('');
 
-  // 5. Matrículas (90 Matrículas vinculadas às turmas oficiais)
-  const matriculas = Array.from({ length: 90 }).map(() => {
-    const turmaEscolhida = randomItem(turmasGrade);
+  // 5. Matrículas (120 Matrículas distribuídas nas turmas)
+  const matriculas = Array.from({ length: 120 }).map(() => {
+    const turmaEscolhida = randomItem(turmasOficiais);
     const modInfo = modalidadesCatalog.find(m => m.id === turmaEscolhida.id_modalidade);
     return {
       id: generateId(),
@@ -590,8 +740,8 @@ function generateSqlSeed() {
   }
   sqlLines.push('');
 
-  // 6. Presenças de Exemplo (300 registros)
-  const presencas = Array.from({ length: 300 }).map(() => {
+  // 6. Presenças de Exemplo (400 registros)
+  const presencas = Array.from({ length: 400 }).map(() => {
     const m = randomItem(matriculas);
     return {
       id: generateId(),
@@ -615,8 +765,8 @@ function generateSqlSeed() {
   sqlLines.push('');
 
   // 7. Aulas Realizadas / Agendadas
-  const aulas = Array.from({ length: 40 }).map(() => {
-    const t = randomItem(turmasGrade);
+  const aulas = Array.from({ length: 50 }).map(() => {
+    const t = randomItem(turmasOficiais);
     return {
       id: generateId(),
       id_turma: t.id,
