@@ -516,6 +516,13 @@ export type Database = {
         }
         Returns: Json
       }
+      delete_user_account: {
+        Args: {
+          _requester_id: string
+          _target_user_id: string
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
