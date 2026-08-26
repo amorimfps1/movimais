@@ -37,15 +37,22 @@ import {
   AlertTriangle,
   Trash2,
   Lock,
+  Dumbbell,
+  Check,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { STORES, type Modalidade, type Instrutor } from "@/lib/store";
+import { useTable } from "@/hooks/useTable";
 
 interface ProfileItem {
   id: string;
   email: string;
   nome: string | null;
   status: UserStatus | null;
+  especialidades?: string[] | null;
+  id_instrutor?: string | null;
   created_at?: string;
   approved_at?: string | null;
   rejection_reason?: string | null;
@@ -74,6 +81,9 @@ const ROLES_DEF: { value: AppRole; label: string; description: string; badgeColo
 
 export default function UsuariosPage() {
   const { user: currentUser } = useAuth();
+  const { data: modalidades } = useTable<Modalidade>(STORES.MODALIDADES);
+  const { data: instrutores } = useTable<Instrutor>(STORES.INSTRUTORES);
+
   const [profiles, setProfiles] = useState<ProfileItem[]>([]);
   const [rolesMap, setRolesMap] = useState<Record<string, AppRole[]>>({});
   const [loading, setLoading] = useState(true);
@@ -85,7 +95,14 @@ export default function UsuariosPage() {
   // Estado do Modal de Aprovação
   const [approveTarget, setApproveTarget] = useState<ProfileItem | null>(null);
   const [selectedRole, setSelectedRole] = useState<AppRole | "">("");
+  const [selectedSpecs, setSelectedSpecs] = useState<string[]>([]);
+  const [selectedInstrutorId, setSelectedInstrutorId] = useState<string>("");
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Estado do Modal de Edição de Especialidades do Instrutor
+  const [editSpecsTarget, setEditSpecsTarget] = useState<ProfileItem | null>(null);
+  const [editSpecsList, setEditSpecsList] = useState<string[]>([]);
+  const [editInstrutorId, setEditInstrutorId] = useState<string>("");
 
   // Estado do Modal de Rejeição
   const [rejectTarget, setRejectTarget] = useState<ProfileItem | null>(null);
@@ -109,7 +126,6 @@ export default function UsuariosPage() {
       if (!res1.error && res1.data) {
         profsData = res1.data;
       } else {
-        // Fallback sem order caso created_at não exista
         const res2 = await supabase.from("profiles").select("*");
         if (!res2.error && res2.data) {
           profsData = res2.data;
@@ -142,6 +158,8 @@ export default function UsuariosPage() {
         }
         return {
           ...p,
+          especialidades: p.especialidades || [],
+          id_instrutor: p.id_instrutor || null,
           status: inferredStatus,
         };
       });
@@ -165,7 +183,32 @@ export default function UsuariosPage() {
     loadData();
   }, []);
 
-  // Executar Aprovação com Role Obrigatória
+  const toggleApproveSpec = (nomeMod: string) => {
+    setSelectedSpecs(prev =>
+      prev.includes(nomeMod) ? prev.filter(s => s !== nomeMod) : [...prev, nomeMod]
+    );
+  };
+
+  const toggleEditSpec = (nomeMod: string) => {
+    setEditSpecsList(prev =>
+      prev.includes(nomeMod) ? prev.filter(s => s !== nomeMod) : [...prev, nomeMod]
+    );
+  };
+
+  // Abrir modal de aprovação
+  const openApproveModal = (p: ProfileItem) => {
+    setApproveTarget(p);
+    setSelectedRole("");
+    setSelectedSpecs(p.especialidades || []);
+    // Tenta encontrar instrutor com email correspondente
+    const matchingInst = instrutores.find(i => i.email?.toLowerCase() === p.email.toLowerCase());
+    setSelectedInstrutorId(matchingInst?.id || p.id_instrutor || "");
+    if (matchingInst && (!p.especialidades || p.especialidades.length === 0)) {
+      setSelectedSpecs(matchingInst.especialidades || []);
+    }
+  };
+
+  // Executar Aprovação com Role Obrigatória e Especialidades
   const handleConfirmApproval = async () => {
     if (!approveTarget || !selectedRole) {
       toast.error("Selecione obrigatoriamente um cargo para aprovar o usuário.");
@@ -195,9 +238,7 @@ export default function UsuariosPage() {
               rejection_reason: null,
             } as any)
             .eq("id", approveTarget.id);
-        } catch {
-          // Ignora se a coluna status não existir no banco
-        }
+        } catch {}
 
         // Insere o papel em user_roles
         await supabase.from("user_roles").delete().eq("user_id", approveTarget.id);
@@ -207,12 +248,74 @@ export default function UsuariosPage() {
         });
       }
 
+      // 3. Atualizar especialidades e id_instrutor em profiles caso seja instrutor
+      if (selectedRole === "instrutor") {
+        try {
+          await supabase
+            .from("profiles")
+            .update({
+              especialidades: selectedSpecs,
+              id_instrutor: selectedInstrutorId || null,
+            } as any)
+            .eq("id", approveTarget.id);
+
+          // Se tiver instrutor vinculado, atualiza seu user_id e especialidades
+          if (selectedInstrutorId) {
+            await supabase
+              .from("instrutores")
+              .update({
+                user_id: approveTarget.id,
+                especialidades: selectedSpecs,
+              } as any)
+              .eq("id", selectedInstrutorId);
+          }
+        } catch (e) {
+          console.warn("Erro ao salvar especialidades em profiles:", e);
+        }
+      }
+
       toast.success(`Usuário ${approveTarget.email} aprovado com sucesso como ${selectedRole}!`);
       setApproveTarget(null);
       setSelectedRole("");
+      setSelectedSpecs([]);
+      setSelectedInstrutorId("");
       await loadData();
     } catch (err: any) {
       toast.error(`Erro ao aprovar: ${err?.message || "Tente novamente"}`);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Salvar Edição de Especialidades do Instrutor
+  const handleSaveInstructorSpecs = async () => {
+    if (!editSpecsTarget) return;
+    setActionLoading(true);
+
+    try {
+      await supabase
+        .from("profiles")
+        .update({
+          especialidades: editSpecsList,
+          id_instrutor: editInstrutorId || null,
+        } as any)
+        .eq("id", editSpecsTarget.id);
+
+      if (editInstrutorId) {
+        await supabase
+          .from("instrutores")
+          .update({
+            user_id: editSpecsTarget.id,
+            especialidades: editSpecsList,
+          } as any)
+          .eq("id", editInstrutorId);
+      }
+
+      toast.success(`Especialidades do professor atualizadas com sucesso!`);
+      setEditSpecsTarget(null);
+      await loadData();
+    } catch (err: any) {
+      toast.error(`Erro ao atualizar especialidades: ${err?.message || "Tente novamente"}`);
     } finally {
       setActionLoading(false);
     }
@@ -244,9 +347,7 @@ export default function UsuariosPage() {
               approved_at: new Date().toISOString(),
             } as any)
             .eq("id", rejectTarget.id);
-        } catch {
-          // Fallback
-        }
+        } catch {}
 
         await supabase.from("user_roles").delete().eq("user_id", rejectTarget.id);
       }
@@ -272,26 +373,21 @@ export default function UsuariosPage() {
 
     setDeleteLoading(true);
     try {
-      // 1. Tentar RPC atômica no Supabase
       const { error: rpcError } = await supabase.rpc("delete_user_account", {
         _target_user_id: deleteTarget.id,
         _requester_id: currentUser?.id ?? "",
       });
 
-      // 2. Fallback direto caso a RPC ainda não esteja instalada no Supabase
       if (rpcError) {
         console.warn("RPC delete_user_account falhou, aplicando fallback direto:", rpcError.message);
 
-        // Remover notificações vinculadas
         try {
           await supabase.from("notifications" as any).delete().eq("user_id", deleteTarget.id);
         } catch {}
 
-        // Remover papéis em user_roles
         const { error: rolesErr } = await supabase.from("user_roles").delete().eq("user_id", deleteTarget.id);
         if (rolesErr) console.warn("Erro ao remover user_roles:", rolesErr);
 
-        // Remover perfil em profiles
         const { error: profErr } = await supabase.from("profiles").delete().eq("id", deleteTarget.id);
         if (profErr) {
           throw new Error(profErr.message || "Erro de permissão ao excluir o perfil do banco.");
@@ -311,7 +407,6 @@ export default function UsuariosPage() {
 
   // Toggle direto de roles para usuários já ativos
   const toggleRole = async (userId: string, role: AppRole, checked: boolean) => {
-    // BLOQUEIO: Impedir que o usuário logado altere o próprio papel
     if (userId === currentUser?.id) {
       toast.error("Por motivos de segurança, você não pode alterar os seus próprios cargos de acesso.");
       return;
@@ -346,11 +441,8 @@ export default function UsuariosPage() {
     return profiles.filter((p) => {
       const roles = rolesMap[p.id] ?? [];
       const statusLower = (p.status || "").toLowerCase();
-      // Se tem papel atribuído, não está mais pendente
       if (roles.length > 0) return false;
-      // Se foi rejeitado explicitamente, sai da fila de pendentes
       if (statusLower === "rejeitado") return false;
-      // Se o status é explicitamente pendente OU se não tem roles e não é aprovado, é pendente!
       return true;
     });
   }, [profiles, rolesMap]);
@@ -376,7 +468,8 @@ export default function UsuariosPage() {
       const userRoles = rolesMap[p.id] ?? [];
       const roleMatch = userRoles.some((r) => r.toLowerCase().includes(s));
       const statusMatch = (p.status || "").toLowerCase().includes(s);
-      return nameMatch || emailMatch || roleMatch || statusMatch;
+      const specMatch = (p.especialidades || []).some(sp => sp.toLowerCase().includes(s));
+      return nameMatch || emailMatch || roleMatch || statusMatch || specMatch;
     });
   }, [profiles, activeTab, pendentesList, ativosList, search, rolesMap]);
 
@@ -390,7 +483,7 @@ export default function UsuariosPage() {
       {/* Top Header */}
       <PageHeader
         title="Gestão de Usuários & Acessos"
-        description="Painel de aprovação, atribuição de cargos e controle de acessos da equipe do MOVI+ MCJB"
+        description="Painel de aprovação, atribuição de cargos e especialidades (1:N) da equipe do MOVI+ MCJB"
         badge="Controle de Acessos"
         action={
           <Button
@@ -521,7 +614,7 @@ export default function UsuariosPage() {
           <div className="relative max-w-md min-w-[240px]">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome, e-mail ou cargo..."
+              placeholder="Buscar por nome, e-mail, cargo ou modalidade..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9.5 bg-background/60 border-white/10 rounded-xl text-xs sm:text-sm h-10"
@@ -623,10 +716,7 @@ export default function UsuariosPage() {
 
                             <Button
                               size="sm"
-                              onClick={() => {
-                                setApproveTarget(p);
-                                setSelectedRole("");
-                              }}
+                              onClick={() => openApproveModal(p)}
                               className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs gap-1.5 rounded-xl h-9 shadow-md shadow-emerald-900/20"
                             >
                               <CheckCircle2 className="w-4 h-4" />
@@ -668,6 +758,8 @@ export default function UsuariosPage() {
                     const initial = p.nome ? p.nome.charAt(0).toUpperCase() : p.email.charAt(0).toUpperCase();
                     const isPendente = p.status === "pendente" && userRoles.length === 0;
                     const isRejeitado = p.status === "rejeitado";
+                    const isInstrutor = userRoles.includes("instrutor");
+                    const specs = p.especialidades || [];
 
                     return (
                       <tr
@@ -718,6 +810,7 @@ export default function UsuariosPage() {
                                   </span>
                                 )}
                               </div>
+
                               <div className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
                                 <span>{p.email}</span>
                                 {isSelf && (
@@ -726,6 +819,39 @@ export default function UsuariosPage() {
                                   </span>
                                 )}
                               </div>
+
+                              {/* TAGS DE ESPECIALIDADES DO INSTRUTOR */}
+                              {isInstrutor && (
+                                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                                  <span className="text-[10px] uppercase tracking-wider font-semibold text-emerald-400">
+                                    Especialidades:
+                                  </span>
+                                  {specs.length > 0 ? (
+                                    specs.map((sp, sIdx) => (
+                                      <span
+                                        key={sIdx}
+                                        className="px-2 py-0.2 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-medium"
+                                      >
+                                        {sp}
+                                      </span>
+                                    ))
+                                  ) : (
+                                    <span className="text-[10px] text-muted-foreground italic">
+                                      Nenhuma modalidade configurada
+                                    </span>
+                                  )}
+                                  <button
+                                    onClick={() => {
+                                      setEditSpecsTarget(p);
+                                      setEditSpecsList(p.especialidades || []);
+                                      setEditInstrutorId(p.id_instrutor || "");
+                                    }}
+                                    className="text-[10px] text-primary hover:underline ml-1 font-medium flex items-center gap-0.5"
+                                  >
+                                    <Pencil className="w-2.5 h-2.5" /> Editar
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -761,10 +887,7 @@ export default function UsuariosPage() {
                             {isPendente && (
                               <Button
                                 size="sm"
-                                onClick={() => {
-                                  setApproveTarget(p);
-                                  setSelectedRole("");
-                                }}
+                                onClick={() => openApproveModal(p)}
                                 className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs gap-1 rounded-lg h-8 px-2.5"
                               >
                                 <ShieldCheck className="w-3.5 h-3.5" />
@@ -812,9 +935,9 @@ export default function UsuariosPage() {
         )}
       </div>
 
-      {/* MODAL 1: APROVAÇÃO COM ATRIBUIÇÃO OBRIGATÓRIA DE CARGO */}
+      {/* MODAL 1: APROVAÇÃO COM ATRIBUIÇÃO OBRIGATÓRIA DE CARGO E ESPECIALIDADES */}
       <Dialog open={!!approveTarget} onOpenChange={(open) => !open && setApproveTarget(null)}>
-        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-2xl border-white/10 rounded-2xl">
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-2xl border-white/10 rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-foreground">
               <ShieldCheck className="w-5 h-5 text-emerald-500" />
@@ -826,13 +949,13 @@ export default function UsuariosPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-5 py-3">
+          <div className="space-y-4 py-3">
             <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/5 space-y-1">
               <div className="text-xs font-semibold text-foreground">{approveTarget?.nome || approveTarget?.email}</div>
               <div className="text-[11px] text-muted-foreground">{approveTarget?.email}</div>
             </div>
 
-            {/* Menu Suspenso Exclusivo de Roles */}
+            {/* Menu Suspenso de Roles */}
             <div className="space-y-2">
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                 Cargo Obrigatório <span className="text-rose-500">*</span>
@@ -858,6 +981,62 @@ export default function UsuariosPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* SELEÇÃO DE ESPECIALIDADES SE FOR INSTRUTOR */}
+            {selectedRole === "instrutor" && (
+              <div className="space-y-3 pt-2 border-t border-white/10 animate-in fade-in duration-300">
+                <div>
+                  <label className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+                    <Dumbbell className="w-3.5 h-3.5" />
+                    Modalidades / Especialidades do Instrutor (1 : N)
+                  </label>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Marque as modalidades que este profissional leciona:
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto p-2 rounded-xl bg-background/50 border border-white/10 custom-scrollbar">
+                  {modalidades.map(mod => {
+                    const isSel = selectedSpecs.includes(mod.nome_modalidade);
+                    return (
+                      <button
+                        key={mod.id}
+                        type="button"
+                        onClick={() => toggleApproveSpec(mod.nome_modalidade)}
+                        className={`
+                          p-2 rounded-lg border text-left text-xs transition-all flex items-center justify-between gap-1
+                          ${isSel
+                            ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300 font-semibold"
+                            : "bg-white/[0.02] border-white/5 text-muted-foreground hover:bg-white/5"
+                          }
+                        `}
+                      >
+                        <span className="truncate">{mod.nome_modalidade}</span>
+                        {isSel && <Check className="w-3.5 h-3.5 shrink-0 text-emerald-400" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Vincular Cadastro de Instrutor Existente (Opcional)
+                  </label>
+                  <Select value={selectedInstrutorId} onValueChange={setSelectedInstrutorId}>
+                    <SelectTrigger className="w-full h-9 bg-background/50 border-white/10 rounded-xl text-xs mt-1">
+                      <SelectValue placeholder="Selecione o instrutor correspondente..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card/95 border-white/10 max-h-48">
+                      {instrutores.map(i => (
+                        <SelectItem key={i.id} value={i.id} className="text-xs">
+                          {i.nome_completo} ({i.email || "Sem email"})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
 
             <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs flex items-start gap-2">
               <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" />
@@ -892,7 +1071,83 @@ export default function UsuariosPage() {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL 2: REJEIÇÃO COM MOTIVO */}
+      {/* MODAL 2: EDIÇÃO DE ESPECIALIDADES DO INSTRUTOR */}
+      <Dialog open={!!editSpecsTarget} onOpenChange={(open) => !open && setEditSpecsTarget(null)}>
+        <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-2xl border-white/10 rounded-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-foreground">
+              <Dumbbell className="w-5 h-5 text-emerald-400" />
+              Especialidades do Instrutor (1 : N)
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Selecione as modalidades ministradas por{" "}
+              <strong className="text-foreground">{editSpecsTarget?.nome || editSpecsTarget?.email}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            <div className="grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto p-2 rounded-xl bg-background/50 border border-white/10 custom-scrollbar">
+              {modalidades.map(mod => {
+                const isSel = editSpecsList.includes(mod.nome_modalidade);
+                return (
+                  <button
+                    key={mod.id}
+                    type="button"
+                    onClick={() => toggleEditSpec(mod.nome_modalidade)}
+                    className={`
+                      p-2.5 rounded-lg border text-left text-xs transition-all flex items-center justify-between gap-1
+                      ${isSel
+                        ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-300 font-semibold"
+                        : "bg-white/[0.02] border-white/5 text-muted-foreground hover:bg-white/5"
+                      }
+                    `}
+                  >
+                    <span className="truncate">{mod.nome_modalidade}</span>
+                    {isSel && <Check className="w-3.5 h-3.5 shrink-0 text-emerald-400" />}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground">
+                Vincular ao Cadastro de Instrutor
+              </label>
+              <Select value={editInstrutorId} onValueChange={setEditInstrutorId}>
+                <SelectTrigger className="w-full h-9 bg-background/50 border-white/10 rounded-xl text-xs mt-1">
+                  <SelectValue placeholder="Selecione o registro..." />
+                </SelectTrigger>
+                <SelectContent className="bg-card/95 border-white/10 max-h-48">
+                  {instrutores.map(i => (
+                    <SelectItem key={i.id} value={i.id} className="text-xs">
+                      {i.nome_completo} ({i.email || "Sem email"})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setEditSpecsTarget(null)}
+              className="rounded-xl border-white/10 text-xs h-10"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveInstructorSpecs}
+              disabled={actionLoading}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-xs h-10 font-medium"
+            >
+              {actionLoading ? "Salvando..." : "Salvar Especialidades"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL 3: REJEIÇÃO COM MOTIVO */}
       <Dialog open={!!rejectTarget} onOpenChange={(open) => !open && setRejectTarget(null)}>
         <DialogContent className="sm:max-w-md bg-card/95 backdrop-blur-2xl border-white/10 rounded-2xl">
           <DialogHeader>
@@ -939,7 +1194,7 @@ export default function UsuariosPage() {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL 3: EXCLUSÃO DEFINITIVA DE USUÁRIO */}
+      {/* MODAL 4: EXCLUSÃO DEFINITIVA DE USUÁRIO */}
       <Dialog
         open={!!deleteTarget}
         onOpenChange={(open) => !open && !deleteLoading && setDeleteTarget(null)}

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import PageHeader from "@/components/PageHeader";
 import DataTable, { FilterConfig } from "@/components/DataTable";
 import StatusBadge from "@/components/StatusBadge";
@@ -9,20 +10,38 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Calendar, Users, LayoutGrid, List, Dumbbell, Pencil, Trash2 } from "lucide-react";
-import { create, update, remove, generateId, STORES, type Turma, type Modalidade, type Matricula } from "@/lib/store";
+import {
+  Plus, Calendar, Users, LayoutGrid, List, Dumbbell,
+  Pencil, Trash2, Clock, MapPin, UserCog, ClipboardCheck, Check
+} from "lucide-react";
+import { create, update, remove, generateId, STORES, type Turma, type Modalidade, type Matricula, type Instrutor } from "@/lib/store";
 import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
 
+const DIAS_SEMANA_OPCOES = [
+  "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"
+];
+
 const emptyTurma = (): Turma => ({
-  id: generateId(), id_modalidade: "", nome_turma: "", faixa_etaria: "",
-  capacidade_maxima: 20, status_turma: "ATIVA", permite_experimental: true,
+  id: generateId(),
+  id_modalidade: "",
+  nome_turma: "",
+  faixa_etaria: "",
+  capacidade_maxima: 20,
+  status_turma: "ATIVA",
+  permite_experimental: true,
+  dias_semana: [],
+  horario_inicio: "08:00",
+  horario_fim: "09:00",
+  id_instrutor: null,
+  sala: "Sala Principal",
 });
 
 export default function TurmasPage() {
   const { data: turmas, reload } = useTable<Turma>(STORES.TURMAS);
   const { data: modalidades } = useTable<Modalidade>(STORES.MODALIDADES);
   const { data: matriculas } = useTable<Matricula>(STORES.MATRICULAS);
+  const { data: instrutores } = useTable<Instrutor>(STORES.INSTRUTORES);
 
   const [open, setOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Turma | null>(null);
@@ -55,7 +74,14 @@ export default function TurmasPage() {
 
   const handleEdit = (item: Turma) => {
     setEditingItem(item);
-    setForm({ ...item });
+    setForm({
+      ...item,
+      dias_semana: item.dias_semana || [],
+      horario_inicio: item.horario_inicio || "08:00",
+      horario_fim: item.horario_fim || "09:00",
+      id_instrutor: item.id_instrutor || null,
+      sala: item.sala || "",
+    });
     setOpen(true);
   };
 
@@ -78,10 +104,12 @@ export default function TurmasPage() {
       const payload = {
         ...form,
         id_modalidade: form.id_modalidade || null as any,
+        id_instrutor: form.id_instrutor || null,
+        dias_semana: form.dias_semana || [],
       };
       if (editingItem) {
         await update(STORES.TURMAS, payload);
-        toast({ title: "Turma atualizada!" });
+        toast({ title: "Turma atualizada com sucesso!" });
       } else {
         await create(STORES.TURMAS, payload);
         toast({ title: "Turma criada com sucesso!" });
@@ -91,6 +119,15 @@ export default function TurmasPage() {
       setForm(emptyTurma());
     } catch (e: any) {
       toast({ title: "Erro ao salvar", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const toggleDiaSemana = (dia: string) => {
+    const current = form.dias_semana || [];
+    if (current.includes(dia)) {
+      setForm(prev => ({ ...prev, dias_semana: current.filter(d => d !== dia) }));
+    } else {
+      setForm(prev => ({ ...prev, dias_semana: [...current, dia] }));
     }
   };
 
@@ -110,15 +147,20 @@ export default function TurmasPage() {
       label: "Modalidade",
       options: modalidades.map(m => ({ label: m.nome_modalidade, value: m.id })),
     },
-  ], [modalidades]);
+    {
+      key: "id_instrutor",
+      label: "Instrutor",
+      options: instrutores.filter(i => i.ativo).map(i => ({ label: i.nome_completo, value: i.id })),
+    },
+  ], [modalidades, instrutores]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
 
       {/* Top Header */}
       <PageHeader
-        title="Turmas e Horários"
-        description="Controle de turmas, limites de capacidade, faixas etárias e ocupação de vagas"
+        title="Turmas e Grade Horária"
+        description="Controle de grade fixa, horários, limites de vagas e instrutores responsáveis pelo MCJB"
         badge={`${totalTurmas} Turmas`}
         action={
           <div className="flex items-center gap-2">
@@ -187,57 +229,103 @@ export default function TurmasPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {turmas.map(turma => {
             const mod = modalidades.find(m => m.id === turma.id_modalidade);
+            const inst = instrutores.find(i => i.id === turma.id_instrutor);
             const matriculados = ocupacaoPorTurma[turma.id] || 0;
             const cap = Number(turma.capacidade_maxima) || 20;
             const pct = Math.min(100, Math.round((matriculados / cap) * 100));
+            const diasTexto = turma.dias_semana && turma.dias_semana.length > 0
+              ? turma.dias_semana.join(" • ")
+              : "Dias a definir";
+            const horarioTexto = turma.horario_inicio
+              ? `${turma.horario_inicio.slice(0, 5)} às ${turma.horario_fim ? turma.horario_fim.slice(0, 5) : '?'}`
+              : "Horário livre";
 
             return (
               <div
                 key={turma.id}
-                className="rounded-2xl border border-white/10 bg-card/60 backdrop-blur-xl p-5 hover:border-white/20 transition-all space-y-4 shadow-lg group relative overflow-hidden"
+                className="rounded-2xl border border-white/10 bg-card/60 backdrop-blur-xl p-5 hover:border-white/20 transition-all space-y-4 shadow-lg group relative overflow-hidden flex flex-col justify-between"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">
-                      {mod?.nome_modalidade || "Modalidade Geral"}
-                    </span>
-                    <h3 className="text-lg font-bold text-foreground mt-0.5">{turma.nome_turma}</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">Faixa: {turma.faixa_etaria || "Livre"}</p>
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">
+                        {mod?.nome_modalidade || "Modalidade Geral"}
+                      </span>
+                      <h3 className="text-lg font-bold text-foreground mt-0.5">{turma.nome_turma}</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">Faixa: {turma.faixa_etaria || "Livre"}</p>
+                    </div>
+                    <StatusBadge status={turma.status_turma} />
                   </div>
-                  <StatusBadge status={turma.status_turma} />
+
+                  {/* Badge da Grade Horária Fixa */}
+                  <div className="p-3 rounded-xl bg-white/[0.03] border border-white/5 space-y-2 text-xs">
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span className="flex items-center gap-1.5 font-medium text-foreground">
+                        <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+                        {diasTexto}
+                      </span>
+                      <span className="flex items-center gap-1 font-mono text-[11px] text-muted-foreground">
+                        <Clock className="w-3 h-3 text-sky-400 shrink-0" />
+                        {horarioTexto}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-white/5 text-[11px]">
+                      <div className="flex items-center gap-1.5 text-muted-foreground truncate">
+                        <UserCog className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span className="truncate font-medium text-foreground">
+                          {inst ? inst.nome_completo : "Sem instrutor vinculado"}
+                        </span>
+                      </div>
+                      {turma.sala && (
+                        <span className="flex items-center gap-1 text-muted-foreground shrink-0 text-[10px]">
+                          <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
+                          {turma.sala}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Termômetro de Ocupação de Vagas */}
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Ocupação de Vagas</span>
+                      <span className="font-semibold text-foreground">
+                        {matriculados} / {cap} ({pct}%)
+                      </span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${pct >= 90
+                            ? "bg-rose-500"
+                            : pct >= 70
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
+                          }`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                {/* Termômetro de Ocupação de Vagas */}
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">Ocupação de Vagas</span>
-                    <span className="font-semibold text-foreground">
-                      {matriculados} / {cap} ({pct}%)
-                    </span>
-                  </div>
-                  <div className="w-full h-2 rounded-full bg-white/5 overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-500 ${pct >= 90
-                          ? "bg-rose-500"
-                          : pct >= 70
-                            ? "bg-amber-500"
-                            : "bg-emerald-500"
-                        }`}
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-white/5 text-xs text-muted-foreground">
-                  <span>
-                    {turma.permite_experimental ? "✨ Aula experimental permitida" : "🔒 Sem aula experimental"}
-                  </span>
+                {/* Rodapé de Ações */}
+                <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs text-muted-foreground">
+                  <Link to={`/presencas?turma=${turma.id}`}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 px-2.5 text-xs rounded-xl border-white/10 gap-1.5 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                    >
+                      <ClipboardCheck className="w-3.5 h-3.5" />
+                      <span>Chamada</span>
+                    </Button>
+                  </Link>
 
                   <div className="flex items-center gap-1">
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg"
                       onClick={() => handleEdit(turma)}
                       title="Editar"
                     >
@@ -246,7 +334,7 @@ export default function TurmasPage() {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-7 w-7 text-muted-foreground hover:text-rose-400 rounded-lg"
+                      className="h-8 w-8 text-muted-foreground hover:text-rose-400 rounded-lg"
                       onClick={() => handleDelete(turma)}
                       title="Excluir"
                     >
@@ -268,20 +356,67 @@ export default function TurmasPage() {
         /* Visualização em Tabela */
         <DataTable
           data={turmas}
-          searchKeys={["nome_turma", "faixa_etaria"]}
-          searchPlaceholder="Buscar por nome da turma ou faixa etária..."
+          searchKeys={["nome_turma", "faixa_etaria", "sala"]}
+          searchPlaceholder="Buscar por turma, horário ou sala..."
           filters={filters}
           onEdit={handleEdit}
           onDelete={handleDelete}
           exportFilename="turmas_movimais"
+          customActions={t => (
+            <Link to={`/presencas?turma=${t.id}`}>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 px-2.5 text-xs rounded-lg border-white/10 gap-1 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                title="Abrir Lista de Chamada desta Turma"
+              >
+                <ClipboardCheck className="w-3.5 h-3.5" />
+                <span>Chamada</span>
+              </Button>
+            </Link>
+          )}
           columns={[
-            { key: "nome_turma", label: "Nome da Turma" },
+            {
+              key: "nome_turma",
+              label: "Nome da Turma",
+              render: t => (
+                <div>
+                  <p className="font-semibold text-foreground">{t.nome_turma}</p>
+                  <p className="text-[11px] text-muted-foreground">{t.sala || "Sem sala definida"}</p>
+                </div>
+              ),
+            },
             {
               key: "id_modalidade",
               label: "Modalidade",
               render: t => modalidades.find(m => m.id === t.id_modalidade)?.nome_modalidade || "—",
             },
-            { key: "faixa_etaria", label: "Faixa Etária", render: t => t.faixa_etaria || "Livre" },
+            {
+              key: "grade",
+              label: "Grade Horária Fixa",
+              render: t => {
+                const dias = t.dias_semana && t.dias_semana.length > 0 ? t.dias_semana.join(", ") : "—";
+                const horario = t.horario_inicio ? `${t.horario_inicio.slice(0, 5)} - ${t.horario_fim?.slice(0, 5) || '?'}` : "—";
+                return (
+                  <div className="text-xs">
+                    <p className="font-medium text-foreground">{dias}</p>
+                    <p className="font-mono text-[11px] text-muted-foreground">{horario}</p>
+                  </div>
+                );
+              },
+            },
+            {
+              key: "id_instrutor",
+              label: "Instrutor Responsável",
+              render: t => {
+                const inst = instrutores.find(i => i.id === t.id_instrutor);
+                return (
+                  <span className="text-xs text-foreground font-medium">
+                    {inst ? inst.nome_completo : <span className="text-muted-foreground italic">Não atribuído</span>}
+                  </span>
+                );
+              },
+            },
             {
               key: "capacidade_maxima",
               label: "Ocupação / Limite",
@@ -301,10 +436,10 @@ export default function TurmasPage() {
 
       {/* Modal de Criação / Edição de Turma */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg bg-card/95 backdrop-blur-2xl border-white/10 rounded-2xl p-6">
+        <DialogContent className="max-w-lg bg-card/95 backdrop-blur-2xl border-white/10 rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold">
-              {editingItem ? "Editar Turma" : "Cadastrar Nova Turma"}
+              {editingItem ? "Editar Turma & Grade" : "Cadastrar Nova Turma & Grade"}
             </DialogTitle>
           </DialogHeader>
 
@@ -315,13 +450,75 @@ export default function TurmasPage() {
             </div>
 
             <div className="sm:col-span-2">
-              <Label className="text-xs">Modalidade</Label>
+              <Label className="text-xs">Modalidade *</Label>
               <Select value={form.id_modalidade} onValueChange={v => set("id_modalidade", v)}>
-                <SelectTrigger className="bg-background/60 border-white/10 rounded-xl"><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                <SelectContent className="bg-card/95 border-white/10">
-                  {modalidades.map(m => <SelectItem key={m.id} value={m.id}>{m.nome_modalidade}</SelectItem>)}
+                <SelectTrigger className="bg-background/60 border-white/10 rounded-xl"><SelectValue placeholder="Selecione a modalidade..." /></SelectTrigger>
+                <SelectContent className="bg-card/95 border-white/10 max-h-56">
+                  {modalidades.map(m => <SelectItem key={m.id} value={m.id}>{m.nome_modalidade} ({m.area || "Geral"})</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* SELEÇÃO DO INSTRUTOR RESPONSÁVEL */}
+            <div className="sm:col-span-2">
+              <Label className="text-xs">Instrutor Responsável</Label>
+              <Select value={form.id_instrutor || ""} onValueChange={v => set("id_instrutor", v || null)}>
+                <SelectTrigger className="bg-background/60 border-white/10 rounded-xl">
+                  <SelectValue placeholder="Selecione o professor titular da turma..." />
+                </SelectTrigger>
+                <SelectContent className="bg-card/95 border-white/10 max-h-56">
+                  {instrutores.filter(i => i.ativo).map(i => {
+                    const specs = (i.especialidades || []).join(", ");
+                    return (
+                      <SelectItem key={i.id} value={i.id}>
+                        {i.nome_completo} {specs ? `• (${specs})` : ""}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* SELETOR INTERATIVO DE DIAS DA SEMANA */}
+            <div className="sm:col-span-2 space-y-2">
+              <Label className="text-xs font-semibold text-foreground">Dias da Semana (Grade Fixa)</Label>
+              <div className="flex flex-wrap gap-1.5">
+                {DIAS_SEMANA_OPCOES.map(dia => {
+                  const selected = (form.dias_semana || []).includes(dia);
+                  return (
+                    <button
+                      key={dia}
+                      type="button"
+                      onClick={() => toggleDiaSemana(dia)}
+                      className={`
+                        px-3 py-1.5 rounded-xl border text-xs font-medium transition-all flex items-center gap-1.5
+                        ${selected
+                          ? "bg-primary/20 border-primary text-primary font-semibold shadow-sm"
+                          : "bg-white/[0.02] border-white/10 text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                        }
+                      `}
+                    >
+                      {selected && <Check className="w-3 h-3 text-primary" />}
+                      <span>{dia}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs">Horário de Início</Label>
+              <Input type="time" value={form.horario_inicio} onChange={e => set("horario_inicio", e.target.value)} className="bg-background/60 border-white/10 rounded-xl font-mono text-xs" />
+            </div>
+
+            <div>
+              <Label className="text-xs">Horário de Término</Label>
+              <Input type="time" value={form.horario_fim} onChange={e => set("horario_fim", e.target.value)} className="bg-background/60 border-white/10 rounded-xl font-mono text-xs" />
+            </div>
+
+            <div>
+              <Label className="text-xs">Sala / Espaço de Treino</Label>
+              <Input value={form.sala} onChange={e => set("sala", e.target.value)} placeholder="Ex: Sala 1 - Tatame" className="bg-background/60 border-white/10 rounded-xl" />
             </div>
 
             <div>
@@ -345,8 +542,8 @@ export default function TurmasPage() {
               </Select>
             </div>
 
-            <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/5">
-              <span className="text-xs font-medium text-foreground">Permite Experimental</span>
+            <div className="sm:col-span-2 flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/5">
+              <span className="text-xs font-medium text-foreground">Permite Aluno em Aula Experimental</span>
               <Switch checked={form.permite_experimental} onCheckedChange={v => set("permite_experimental", v)} />
             </div>
           </div>

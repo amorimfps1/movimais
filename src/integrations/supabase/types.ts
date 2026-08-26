@@ -95,30 +95,39 @@ export type Database = {
           cpf: string | null
           created_at: string
           email: string | null
+          especialidades: string[] | null
           funcao: string | null
           id: string
+          id_modalidades: string[] | null
           nome_completo: string
           telefone: string | null
+          user_id: string | null
         }
         Insert: {
           ativo?: boolean | null
           cpf?: string | null
           created_at?: string
           email?: string | null
+          especialidades?: string[] | null
           funcao?: string | null
           id: string
+          id_modalidades?: string[] | null
           nome_completo: string
           telefone?: string | null
+          user_id?: string | null
         }
         Update: {
           ativo?: boolean | null
           cpf?: string | null
           created_at?: string
           email?: string | null
+          especialidades?: string[] | null
           funcao?: string | null
           id?: string
+          id_modalidades?: string[] | null
           nome_completo?: string
           telefone?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -403,7 +412,9 @@ export type Database = {
           approved_by: string | null
           created_at: string
           email: string
+          especialidades: string[] | null
           id: string
+          id_instrutor: string | null
           nome: string | null
           rejection_reason: string | null
           status: Database["public"]["Enums"]["user_status"] | null
@@ -414,7 +425,9 @@ export type Database = {
           approved_by?: string | null
           created_at?: string
           email: string
+          especialidades?: string[] | null
           id: string
+          id_instrutor?: string | null
           nome?: string | null
           rejection_reason?: string | null
           status?: Database["public"]["Enums"]["user_status"] | null
@@ -425,7 +438,9 @@ export type Database = {
           approved_by?: string | null
           created_at?: string
           email?: string
+          especialidades?: string[] | null
           id?: string
+          id_instrutor?: string | null
           nome?: string | null
           rejection_reason?: string | null
           status?: Database["public"]["Enums"]["user_status"] | null
@@ -437,31 +452,46 @@ export type Database = {
         Row: {
           capacidade_maxima: number | null
           created_at: string
+          dias_semana: string[] | null
           faixa_etaria: string | null
+          horario_fim: string | null
+          horario_inicio: string | null
           id: string
+          id_instrutor: string | null
           id_modalidade: string | null
           nome_turma: string
           permite_experimental: boolean | null
+          sala: string | null
           status_turma: string | null
         }
         Insert: {
           capacidade_maxima?: number | null
           created_at?: string
+          dias_semana?: string[] | null
           faixa_etaria?: string | null
+          horario_fim?: string | null
+          horario_inicio?: string | null
           id: string
+          id_instrutor?: string | null
           id_modalidade?: string | null
           nome_turma: string
           permite_experimental?: boolean | null
+          sala?: string | null
           status_turma?: string | null
         }
         Update: {
           capacidade_maxima?: number | null
           created_at?: string
+          dias_semana?: string[] | null
           faixa_etaria?: string | null
+          horario_fim?: string | null
+          horario_inicio?: string | null
           id?: string
+          id_instrutor?: string | null
           id_modalidade?: string | null
           nome_turma?: string
           permite_experimental?: boolean | null
+          sala?: string | null
           status_turma?: string | null
         }
         Relationships: [
@@ -470,6 +500,13 @@ export type Database = {
             columns: ["id_modalidade"]
             isOneToOne: false
             referencedRelation: "modalidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "turmas_id_instrutor_fkey"
+            columns: ["id_instrutor"]
+            isOneToOne: false
+            referencedRelation: "instrutores"
             referencedColumns: ["id"]
           },
         ]

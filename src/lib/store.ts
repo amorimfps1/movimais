@@ -68,6 +68,11 @@ export interface Turma {
   capacidade_maxima: number;
   status_turma: string;
   permite_experimental: boolean;
+  dias_semana?: string[];
+  horario_inicio?: string;
+  horario_fim?: string;
+  id_instrutor?: string | null;
+  sala?: string;
 }
 
 export interface Modalidade {
@@ -85,6 +90,9 @@ export interface Instrutor {
   telefone: string;
   email: string;
   funcao: string;
+  especialidades?: string[];
+  id_modalidades?: string[];
+  user_id?: string | null;
   ativo: boolean;
 }
 
@@ -113,6 +121,18 @@ export interface Presenca {
   tipo_registro: string;
 }
 
+export interface Aula {
+  id: string;
+  id_turma: string;
+  id_instrutor: string | null;
+  data_aula: string;
+  horario_inicio: string;
+  horario_fim: string;
+  status_aula: string;
+  observacoes: string;
+  created_at?: string;
+}
+
 // ============ Table names ============
 export const STORES = {
   ALUNOS: "alunos",
@@ -123,6 +143,7 @@ export const STORES = {
   INSTRUTORES: "instrutores",
   PAGAMENTOS: "pagamentos",
   PRESENCAS: "presencas",
+  AULAS: "aulas",
 } as const;
 
 export function generateId() {
