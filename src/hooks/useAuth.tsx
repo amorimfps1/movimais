@@ -50,24 +50,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let specs: string[] = (profileData?.especialidades as string[]) || [];
       let instId: string | null = profileData?.id_instrutor || null;
 
-      // Se for instrutor e não tiver instrutorId no perfil, tenta resolver pelo email ou user_id na tabela instrutores
+      // Se for instrutor, resolver instrutorId e especialidades na tabela instrutores
       if (userRoles.includes("instrutor")) {
         try {
-          const emailToSearch = userEmail || profileData?.email;
-          const { data: instData } = await supabase
+          // 1. Busca por user_id
+          const { data: instByUser } = await supabase
             .from("instrutores")
-            .select("id, especialidades")
-            .or(`user_id.eq.${uid}${emailToSearch ? `,email.eq.${emailToSearch}` : ""}`)
+            .select("id, especialidades, user_id")
+            .eq("user_id", uid)
             .maybeSingle();
 
-          if (instData) {
-            instId = instData.id;
-            if (specs.length === 0 && instData.especialidades && instData.especialidades.length > 0) {
-              specs = instData.especialidades;
+          if (instByUser) {
+            instId = instByUser.id;
+            if (specs.length === 0 && instByUser.especialidades && instByUser.especialidades.length > 0) {
+              specs = instByUser.especialidades;
+            }
+          } else {
+            // 2. Busca por email (fallback)
+            const emailToSearch = userEmail || profileData?.email;
+            if (emailToSearch) {
+              const { data: instByEmail } = await supabase
+                .from("instrutores")
+                .select("id, especialidades, user_id")
+                .eq("email", emailToSearch)
+                .maybeSingle();
+
+              if (instByEmail) {
+                instId = instByEmail.id;
+                if (specs.length === 0 && instByEmail.especialidades && instByEmail.especialidades.length > 0) {
+                  specs = instByEmail.especialidades;
+                }
+                // Preenche user_id no instrutor se estivesse vazio
+                if (!instByEmail.user_id) {
+                  await supabase.from("instrutores").update({ user_id: uid } as any).eq("id", instByEmail.id);
+                }
+              }
             }
           }
+
+          // Atualiza profiles se id_instrutor estivesse divergente
+          if (instId && profileData && profileData.id_instrutor !== instId) {
+            await supabase.from("profiles").update({ id_instrutor: instId, especialidades: specs } as any).eq("id", uid);
+          }
         } catch (e) {
-          console.warn("Fallback de busca de instrutor:", e);
+          console.warn("Fallback de busca de instrutor em useAuth:", e);
         }
       }
 

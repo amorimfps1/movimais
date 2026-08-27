@@ -28,6 +28,13 @@ vi.mock('@/hooks/useAuth', () => ({
 }));
 
 const mockNavigate = vi.fn();
+const mockToast = vi.fn();
+
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({ toast: mockToast }),
+  toast: (...args: any[]) => mockToast(...args),
+}));
+
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
@@ -36,16 +43,7 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-vi.mock('sonner', () => ({
-  toast: Object.assign(vi.fn(), {
-    error: vi.fn(),
-    success: vi.fn(),
-    warning: vi.fn(),
-  }),
-}));
-
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 describe('AuthPage', () => {
   beforeEach(() => {
@@ -137,7 +135,7 @@ describe('AuthPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Entrar no Sistema' }));
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalled();
+      expect(mockToast).toHaveBeenCalled();
     });
   });
 

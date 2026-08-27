@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
 import MoviLogo from "@/components/MoviLogo";
 import { Clock, CheckCircle2, Lock, Mail, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ type AuthMode = "login" | "register";
 
 export default function AuthPage() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { user, isApproved } = useAuth();
   const [mode, setMode] = useState<AuthMode>("login");
   const [loading, setLoading] = useState(false);
@@ -60,7 +61,7 @@ export default function AuthPage() {
           await supabase.auth.signOut();
           setLoading(false);
           setPendingNotice("Seu cadastro foi realizado com sucesso! Seu acesso está aguardando aprovação da coordenação.");
-          toast.warning("Acesso pendente: aguardando aprovação da coordenação.");
+          toast({ title: "Acesso pendente", description: "Aguardando aprovação da coordenação." });
           return;
         }
 
@@ -69,17 +70,17 @@ export default function AuthPage() {
           setLoading(false);
           const reason = profile?.rejection_reason ? `: ${profile.rejection_reason}` : ".";
           setPendingNotice(`Acesso recusado: Seu cadastro foi rejeitado pela coordenação${reason}`);
-          toast.error("Acesso negado pela coordenação.");
+          toast({ title: "Acesso negado pela coordenação.", variant: "destructive" });
           return;
         }
 
         setLoading(false);
-        toast.success("Bem-vindo de volta ao MOVI+!");
+        toast({ title: "Bem-vindo de volta ao MOVI+!" });
         navigate("/", { replace: true });
       }
     } catch {
       setLoading(false);
-      toast.error("Ocorreu um erro ao tentar entrar. Tente novamente.");
+      toast({ title: "Ocorreu um erro ao tentar entrar. Tente novamente.", variant: "destructive" });
     }
   };
 
@@ -92,7 +93,7 @@ export default function AuthPage() {
 
     if (password.length < 6) {
       setLoading(false);
-      toast.error("A senha deve ter no mínimo 6 caracteres.");
+      toast({ title: "A senha deve ter no mínimo 6 caracteres.", variant: "destructive" });
       return;
     }
 
@@ -109,7 +110,7 @@ export default function AuthPage() {
 
       if (error) {
         setLoading(false);
-        toast.error(error.message || "Erro ao realizar o cadastro. Tente novamente.");
+        toast({ title: error.message || "Erro ao realizar o cadastro. Tente novamente.", variant: "destructive" });
         return;
       }
 
@@ -141,10 +142,10 @@ export default function AuthPage() {
 
       setLoading(false);
       setRegisterSuccess(true);
-      toast.success("Solicitação de cadastro registrada!");
+      toast({ title: "Solicitação de cadastro registrada!" });
     } catch {
       setLoading(false);
-      toast.error("Erro ao conectar com o servidor.");
+      toast({ title: "Erro ao conectar com o servidor.", variant: "destructive" });
     }
   };
 

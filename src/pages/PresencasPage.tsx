@@ -27,7 +27,7 @@ interface PresencaRow {
 
 export default function PresencasPage() {
   const [searchParams] = useSearchParams();
-  const { user, isAdmin, isInstrutor, instrutorId: authInstrutorId } = useAuth();
+  const { user, isAdmin, isInstrutor, instrutorId: authInstrutorId, especialidades: authEspecialidades } = useAuth();
 
   const { data: turmas } = useTable<Turma>(STORES.TURMAS);
   const { data: alunos } = useTable<Aluno>(STORES.ALUNOS);
@@ -40,13 +40,83 @@ export default function PresencasPage() {
   const currentInstrutor = useMemo(() => {
     if (!isInstrutor && isAdmin) return null;
     if (authInstrutorId) {
-      return instrutores.find(i => i.id === authInstrutorId) || null;
+      const found = instrutores.find(i => i.id === authInstrutorId || i.user_id === user?.id);
+      if (found) return found;
+    }
+    if (user?.id) {
+      const found = instrutores.find(i => i.user_id === user.id);
+      if (found) return found;
     }
     if (user?.email) {
-      return instrutores.find(i => i.email?.toLowerCase() === user.email?.toLowerCase()) || null;
+      const found = instrutores.find(i => i.email?.toLowerCase() === user.email?.toLowerCase());
+      if (found) return found;
     }
     return null;
   }, [isInstrutor, isAdmin, authInstrutorId, user, instrutores]);
+
+  // Modalidades lecionadas pelo instrutor logado (para filtro simplificado)
+  const instructorModalidades = useMemo(() => {
+    if (!isInstrutor || isAdmin) {
+      return modalidades;
+    }
+    const specs = currentInstrutor?.especialidades || authEspecialidades || [];
+    const modIds = currentInstrutor?.id_modalidades || [];
+
+    return modalidades.filter(m => {
+      return modIds.includes(m.id) || specs.includes(m.nome_modalidade);
+    });
+  }, [isInstrutor, isAdmin, modalidades, currentInstrutor, authEspecialidades]);
+
+  // Função utilitária para verificar se a turma está atribuída ao instrutor por ID direto
+  const isTurmaAssignedToInstrutor = useMemo(() => {
+    return (turma: Turma | undefined) => {
+      if (!turma || !turma.id_instrutor) return false;
+      if (currentInstrutor && (turma.id_instrutor === currentInstrutor.id || turma.id_instrutor === currentInstrutor.user_id)) {
+        return true;
+      }
+      if (authInstrutorId && turma.id_instrutor === authInstrutorId) {
+        return true;
+      }
+      if (user?.id && turma.id_instrutor === user.id) {
+        return true;
+      }
+
+      const targetInst = instrutores.find(i => i.id === turma.id_instrutor || i.user_id === turma.id_instrutor);
+      if (targetInst) {
+        if (user?.id && targetInst.user_id === user.id) return true;
+        if (user?.email && targetInst.email?.toLowerCase() === user.email.toLowerCase()) return true;
+        if (authInstrutorId && targetInst.id === authInstrutorId) return true;
+      }
+
+      return false;
+    };
+  }, [currentInstrutor, authInstrutorId, user, instrutores]);
+
+  // Verifica se a turma corresponde à especialidade/modalidade do instrutor ou à sua atribuição
+  const isTurmaInInstructorSpecialties = useMemo(() => {
+    return (turma: Turma | undefined) => {
+      if (!turma) return false;
+
+      // Atribuição direta
+      if (isTurmaAssignedToInstrutor(turma)) return true;
+
+      // Busca por modalidade / especialidade lecionada
+      const modOfTurma = modalidades.find(m => m.id === turma.id_modalidade);
+      const modName = modOfTurma?.nome_modalidade;
+
+      if (currentInstrutor?.id_modalidades?.length && turma.id_modalidade) {
+        if (currentInstrutor.id_modalidades.includes(turma.id_modalidade)) return true;
+      }
+      if (currentInstrutor?.especialidades?.length && modName) {
+        if (currentInstrutor.especialidades.includes(modName)) return true;
+      }
+      if (authEspecialidades?.length && modName) {
+        if (authEspecialidades.includes(modName)) return true;
+      }
+
+      return false;
+    };
+  }, [isTurmaAssignedToInstrutor, modalidades, currentInstrutor, authEspecialidades]);
 
   // Filtros de visualização
   const [filterInstrutor, setFilterInstrutor] = useState<string>("ALL");
@@ -105,10 +175,11 @@ export default function PresencasPage() {
       
       // Filtro por Instrutor
       let matchInstrutor = true;
-      if (currentInstrutor) {
-        matchInstrutor = t.id_instrutor === currentInstrutor.id;
+      if (isInstrutor && !isAdmin) {
+        matchInstrutor = isTurmaAssignedToInstrutor(t);
       } else if (filterInstrutor !== "ALL") {
-        matchInstrutor = t.id_instrutor === filterInstrutor;
+        const targetInst = instrutores.find(i => i.id === filterInstrutor);
+        matchInstrutor = t.id_instrutor === filterInstrutor || (targetInst?.user_id && t.id_instrutor === targetInst.user_id);
       }
 
       // Filtro por Modalidade
@@ -119,18 +190,19 @@ export default function PresencasPage() {
 
       return temDia && matchInstrutor && matchModalidade;
     });
-  }, [turmas, diaSemanaSelecionado, currentInstrutor, filterInstrutor, filterModalidade]);
+  }, [turmas, diaSemanaSelecionado, isInstrutor, isAdmin, isTurmaAssignedToInstrutor, filterInstrutor, filterModalidade, instrutores]);
 
   // Lista de todas as turmas filtradas (geral)
   const turmasDisponiveis = useMemo(() => {
-    if (currentInstrutor) {
-      return turmas.filter(t => t.id_instrutor === currentInstrutor.id);
+    if (isInstrutor && !isAdmin) {
+      return turmas.filter(t => isTurmaAssignedToInstrutor(t));
     }
     if (filterInstrutor !== "ALL") {
-      return turmas.filter(t => t.id_instrutor === filterInstrutor);
+      const targetInst = instrutores.find(i => i.id === filterInstrutor);
+      return turmas.filter(t => t.id_instrutor === filterInstrutor || (targetInst?.user_id && t.id_instrutor === targetInst.user_id));
     }
     return turmas;
-  }, [turmas, currentInstrutor, filterInstrutor]);
+  }, [turmas, isInstrutor, isAdmin, isTurmaAssignedToInstrutor, filterInstrutor, instrutores]);
 
   // Abrir lista de chamada
   const abrirChamadaTurma = async (targetTurmaId: string, targetData: string) => {
@@ -138,6 +210,23 @@ export default function PresencasPage() {
       toast({ title: "Selecione a turma e a data da aula", variant: "destructive" });
       return;
     }
+
+    // Trava de Segurança: Instrutores só podem abrir chamadas de turmas atribuídas a eles
+    const targetTurma = turmas.find(t => t.id === targetTurmaId);
+    if (isInstrutor && !isAdmin) {
+      const isMine = isTurmaAssignedToInstrutor(targetTurma);
+      if (!isMine) {
+        toast({
+          title: "Acesso Negado",
+          description: "Você só tem permissão para fazer a chamada de turmas/aulas atribuídas a você.",
+          variant: "destructive",
+        });
+        setChamadaAberta(false);
+        setRows([]);
+        return;
+      }
+    }
+
     setIdTurma(targetTurmaId);
     setDataAula(targetData);
     setLoadingChamada(true);
@@ -191,11 +280,24 @@ export default function PresencasPage() {
 
   const salvarChamada = async () => {
     if (!idTurma || !dataAula) return;
+
+    // Trava de Segurança: Instrutores só podem salvar chamadas de turmas atribuídas a eles
+    const selectedTurma = turmas.find(t => t.id === idTurma);
+    if (isInstrutor && !isAdmin) {
+      const isMine = isTurmaAssignedToInstrutor(selectedTurma);
+      if (!isMine) {
+        toast({
+          title: "Acesso Negado",
+          description: "Você não possui permissão para salvar a chamada desta turma.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setSaving(true);
 
     try {
-      const selectedTurma = turmas.find(t => t.id === idTurma);
-
       // 1. Salvar registros de presenças individuais
       for (const row of rows) {
         if (row.existingId) {
@@ -381,7 +483,7 @@ export default function PresencasPage() {
               </SelectTrigger>
               <SelectContent className="bg-card/95 border-white/10 max-h-56">
                 <SelectItem value="ALL" className="text-xs font-semibold">Todas as Modalidades</SelectItem>
-                {modalidades.map(m => (
+                {instructorModalidades.map(m => (
                   <SelectItem key={m.id} value={m.id} className="text-xs">
                     {m.nome_modalidade} ({m.area || "Geral"})
                   </SelectItem>

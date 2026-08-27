@@ -12,6 +12,7 @@ import { Plus, Dumbbell, LayoutGrid, List, Tag, Pencil, Trash2 } from "lucide-re
 import { create, update, remove, generateId, STORES, type Modalidade } from "@/lib/store";
 import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const emptyModalidade = (): Modalidade => ({
   id: generateId(), nome_modalidade: "", area: "Fitness", valor_padrao: 0, status: "ATIVO",
@@ -20,6 +21,7 @@ const emptyModalidade = (): Modalidade => ({
 const AREAS = ["Artes Marciais", "Dança", "Bem-Estar", "Artes", "Esporte", "Fitness", "Artesanato", "Outro"];
 
 export default function ModalidadesPage() {
+  const { isAdmin } = useAuth();
   const { data: modalidades, reload } = useTable<Modalidade>(STORES.MODALIDADES);
   const [open, setOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Modalidade | null>(null);
@@ -125,10 +127,12 @@ export default function ModalidadesPage() {
               </Button>
             </div>
 
-            <Button onClick={handleNew} className="rounded-xl shadow-md shadow-primary/20 gap-2">
-              <Plus className="w-4 h-4" />
-              <span>Nova Modalidade</span>
-            </Button>
+            {isAdmin && (
+              <Button onClick={handleNew} className="rounded-xl shadow-md shadow-primary/20 gap-2">
+                <Plus className="w-4 h-4" />
+                <span>Nova Modalidade</span>
+              </Button>
+            )}
           </div>
         }
       />
@@ -183,26 +187,28 @@ export default function ModalidadesPage() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg"
-                    onClick={() => handleEdit(mod)}
-                    title="Editar"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 text-muted-foreground hover:text-rose-400 rounded-lg"
-                    onClick={() => handleDelete(mod)}
-                    title="Excluir"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </Button>
-                </div>
+                {isAdmin && (
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg"
+                      onClick={() => handleEdit(mod)}
+                      title="Editar"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 text-muted-foreground hover:text-rose-400 rounded-lg"
+                      onClick={() => handleDelete(mod)}
+                      title="Excluir"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -220,8 +226,8 @@ export default function ModalidadesPage() {
           searchKeys={["nome_modalidade", "area"]}
           searchPlaceholder="Buscar por modalidade ou área..."
           filters={filters}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
+          onEdit={isAdmin ? handleEdit : undefined}
+          onDelete={isAdmin ? handleDelete : undefined}
           exportFilename="modalidades_movimais"
           columns={[
             { key: "nome_modalidade", label: "Modalidade" },

@@ -41,9 +41,8 @@ import {
   Check,
   Pencil,
 } from "lucide-react";
-import { toast } from "sonner";
 import { cn, formatDateToBR } from "@/lib/utils";
-import { STORES, type Modalidade, type Instrutor } from "@/lib/store";
+import { generateId, STORES, type Modalidade, type Instrutor } from "@/lib/store";
 import { useTable } from "@/hooks/useTable";
 
 interface ProfileItem {
@@ -81,8 +80,8 @@ const ROLES_DEF: { value: AppRole; label: string; description: string; badgeColo
 
 export default function UsuariosPage() {
   const { user: currentUser } = useAuth();
-  const { data: modalidades } = useTable<Modalidade>(STORES.MODALIDADES);
-  const { data: instrutores } = useTable<Instrutor>(STORES.INSTRUTORES);
+  const { data: modalidades, reload: reloadModalidades } = useTable<Modalidade>(STORES.MODALIDADES);
+  const { data: instrutores, reload: reloadInstrutores } = useTable<Instrutor>(STORES.INSTRUTORES);
 
   const [profiles, setProfiles] = useState<ProfileItem[]>([]);
   const [rolesMap, setRolesMap] = useState<Record<string, AppRole[]>>({});
@@ -118,6 +117,9 @@ export default function UsuariosPage() {
     setFetchError(null);
 
     try {
+      // Refresh local caches for modalities and instructors
+      await Promise.all([reloadInstrutores(), reloadModalidades()]);
+
       // 1. Buscar perfis com fallback de queries
       let profsData: any[] = [];
       let pError: any = null;
@@ -208,6 +210,102 @@ export default function UsuariosPage() {
     }
   };
 
+  // Função auxiliar para criar/sincronizar perfil na tabela `instrutores`
+  const syncInstructorProfile = async (
+    userId: string,
+    userEmail: string,
+    userName: string | null,
+    specs: string[],
+    existingInstrutorId?: string | null
+  ) => {
+    // 1. Garantir modalidades atualizadas para mapeamento de IDs
+    let currentModalidades = modalidades;
+    if (!currentModalidades || currentModalidades.length === 0) {
+      const { data: modsData } = await supabase.from("modalidades").select("*");
+      if (modsData) currentModalidades = modsData as Modalidade[];
+    }
+
+    const modIds = (currentModalidades || [])
+      .filter((m) => specs.includes(m.nome_modalidade))
+      .map((m) => m.id);
+
+    let targetId = existingInstrutorId || null;
+
+    // 2. Busca segura por user_id ou por email
+    if (!targetId && userId) {
+      const { data: byUser } = await supabase
+        .from("instrutores")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (byUser?.id) {
+        targetId = byUser.id;
+      }
+    }
+
+    if (!targetId && userEmail) {
+      const { data: byEmail } = await supabase
+        .from("instrutores")
+        .select("id")
+        .eq("email", userEmail)
+        .maybeSingle();
+
+      if (byEmail?.id) {
+        targetId = byEmail.id;
+      }
+    }
+
+    const instPayload = {
+      nome_completo: userName || userEmail?.split("@")[0] || "Instrutor",
+      email: userEmail || "",
+      especialidades: specs,
+      id_modalidades: modIds,
+      user_id: userId,
+      ativo: true,
+    };
+
+    // 3. Gravação na tabela `instrutores` com tratamento explícito de erro
+    if (targetId) {
+      const { error: updateErr } = await supabase
+        .from("instrutores")
+        .update(instPayload as any)
+        .eq("id", targetId);
+
+      if (updateErr) {
+        console.error("Erro ao atualizar instrutores:", updateErr);
+        throw new Error(`Falha ao atualizar dados em instrutores: ${updateErr.message}`);
+      }
+    } else {
+      targetId = generateId();
+      const { error: insertErr } = await supabase.from("instrutores").insert({
+        id: targetId,
+        funcao: "INSTRUTOR_PRINCIPAL",
+        ...instPayload,
+      } as any);
+
+      if (insertErr) {
+        console.error("Erro ao criar perfil em instrutores:", insertErr);
+        throw new Error(`Falha ao criar perfil de instrutor: ${insertErr.message}`);
+      }
+    }
+
+    // 4. Gravação no perfil (`profiles`)
+    const { error: profErr } = await supabase
+      .from("profiles")
+      .update({
+        especialidades: specs,
+        id_instrutor: targetId,
+      } as any)
+      .eq("id", userId);
+
+    if (profErr) {
+      console.warn("Erro ao atualizar vinculação em profiles:", profErr);
+    }
+
+    return targetId;
+  };
+
   // Executar Aprovação com Role Obrigatória e Especialidades
   const handleConfirmApproval = async () => {
     if (!approveTarget || !selectedRole) {
@@ -248,30 +346,15 @@ export default function UsuariosPage() {
         });
       }
 
-      // 3. Atualizar especialidades e id_instrutor em profiles caso seja instrutor
+      // 3. Criar/Atualizar perfil na tabela `instrutores` caso seja aprovado como instrutor
       if (selectedRole === "instrutor") {
-        try {
-          await supabase
-            .from("profiles")
-            .update({
-              especialidades: selectedSpecs,
-              id_instrutor: selectedInstrutorId || null,
-            } as any)
-            .eq("id", approveTarget.id);
-
-          // Se tiver instrutor vinculado, atualiza seu user_id e especialidades
-          if (selectedInstrutorId) {
-            await supabase
-              .from("instrutores")
-              .update({
-                user_id: approveTarget.id,
-                especialidades: selectedSpecs,
-              } as any)
-              .eq("id", selectedInstrutorId);
-          }
-        } catch (e) {
-          console.warn("Erro ao salvar especialidades em profiles:", e);
-        }
+        await syncInstructorProfile(
+          approveTarget.id,
+          approveTarget.email,
+          approveTarget.nome,
+          selectedSpecs,
+          selectedInstrutorId
+        );
       }
 
       toast.success(`Usuário ${approveTarget.email} aprovado com sucesso como ${selectedRole}!`);
@@ -293,23 +376,13 @@ export default function UsuariosPage() {
     setActionLoading(true);
 
     try {
-      await supabase
-        .from("profiles")
-        .update({
-          especialidades: editSpecsList,
-          id_instrutor: editInstrutorId || null,
-        } as any)
-        .eq("id", editSpecsTarget.id);
-
-      if (editInstrutorId) {
-        await supabase
-          .from("instrutores")
-          .update({
-            user_id: editSpecsTarget.id,
-            especialidades: editSpecsList,
-          } as any)
-          .eq("id", editInstrutorId);
-      }
+      await syncInstructorProfile(
+        editSpecsTarget.id,
+        editSpecsTarget.email,
+        editSpecsTarget.nome,
+        editSpecsList,
+        editInstrutorId
+      );
 
       toast.success(`Especialidades do professor atualizadas com sucesso!`);
       setEditSpecsTarget(null);
@@ -419,6 +492,19 @@ export default function UsuariosPage() {
       try {
         await supabase.from("profiles").update({ status: "aprovado" } as any).eq("id", userId);
       } catch {}
+
+      if (role === "instrutor") {
+        const targetProf = profiles.find((p) => p.id === userId);
+        if (targetProf) {
+          await syncInstructorProfile(
+            targetProf.id,
+            targetProf.email,
+            targetProf.nome,
+            targetProf.especialidades || [],
+            targetProf.id_instrutor
+          );
+        }
+      }
       
       toast.success(`Perfil ${role} atribuído com sucesso!`);
     } else {

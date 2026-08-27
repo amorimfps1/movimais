@@ -78,7 +78,7 @@ async function deleteAula(id: string): Promise<void> {
 }
 
 export default function AulasPage() {
-  const { user, isInstrutor, isAdmin, instrutorId: authInstrutorId } = useAuth();
+  const { user, isInstrutor, isAdmin, instrutorId: authInstrutorId, especialidades: authEspecialidades } = useAuth();
   const { data: turmas } = useTable<Turma>(STORES.TURMAS);
   const { data: instrutores } = useTable<Instrutor>(STORES.INSTRUTORES);
   const { data: modalidades } = useTable<Modalidade>(STORES.MODALIDADES);
@@ -97,13 +97,82 @@ export default function AulasPage() {
   const currentInstrutor = useMemo(() => {
     if (!isInstrutor && isAdmin) return null;
     if (authInstrutorId) {
-      return instrutores.find(i => i.id === authInstrutorId) || null;
+      const found = instrutores.find(i => i.id === authInstrutorId || i.user_id === user?.id);
+      if (found) return found;
+    }
+    if (user?.id) {
+      const found = instrutores.find(i => i.user_id === user.id);
+      if (found) return found;
     }
     if (user?.email) {
-      return instrutores.find(i => i.email?.toLowerCase() === user.email?.toLowerCase()) || null;
+      const found = instrutores.find(i => i.email?.toLowerCase() === user.email?.toLowerCase());
+      if (found) return found;
     }
     return null;
   }, [isInstrutor, isAdmin, authInstrutorId, user, instrutores]);
+
+  // Modalidades lecionadas pelo instrutor logado (para filtro simplificado)
+  const instructorModalidades = useMemo(() => {
+    if (!isInstrutor || isAdmin) {
+      return modalidades;
+    }
+    const specs = currentInstrutor?.especialidades || authEspecialidades || [];
+    const modIds = currentInstrutor?.id_modalidades || [];
+
+    return modalidades.filter(m => {
+      return modIds.includes(m.id) || specs.includes(m.nome_modalidade);
+    });
+  }, [isInstrutor, isAdmin, modalidades, currentInstrutor, authEspecialidades]);
+
+  // Función utilitária para verificar se a turma está atribuída ao instrutor por ID direto ou vínculo
+  const isTurmaAssignedToInstrutor = useMemo(() => {
+    return (turma: Turma | undefined) => {
+      if (!turma || !turma.id_instrutor) return false;
+      
+      // 1. Matched por ID direto do instrutor ou do usuário
+      if (currentInstrutor) {
+        if (turma.id_instrutor === currentInstrutor.id) return true;
+        if (currentInstrutor.user_id && turma.id_instrutor === currentInstrutor.user_id) return true;
+      }
+      if (authInstrutorId && turma.id_instrutor === authInstrutorId) return true;
+      if (user?.id && turma.id_instrutor === user.id) return true;
+
+      // 2. Busca o registro do instrutor vinculado à turma para conferir se pertence ao usuário logado
+      const targetInst = instrutores.find(i => i.id === turma.id_instrutor || i.user_id === turma.id_instrutor);
+      if (targetInst) {
+        if (user?.id && targetInst.user_id === user.id) return true;
+        if (user?.email && targetInst.email?.toLowerCase() === user.email.toLowerCase()) return true;
+        if (authInstrutorId && targetInst.id === authInstrutorId) return true;
+      }
+
+      return false;
+    };
+  }, [currentInstrutor, authInstrutorId, user, instrutores]);
+
+  // Função utilitária para verificar se a aula está atribuída ao instrutor
+  const isAulaAssignedToInstrutor = useMemo(() => {
+    return (aula: Aula | undefined, turma: Turma | undefined) => {
+      if (aula?.id_instrutor) {
+        if (currentInstrutor) {
+          if (aula.id_instrutor === currentInstrutor.id) return true;
+          if (currentInstrutor.user_id && aula.id_instrutor === currentInstrutor.user_id) return true;
+        }
+        if (authInstrutorId && aula.id_instrutor === authInstrutorId) return true;
+        if (user?.id && aula.id_instrutor === user.id) return true;
+
+        const targetInst = instrutores.find(i => i.id === aula.id_instrutor || i.user_id === aula.id_instrutor);
+        if (targetInst) {
+          if (user?.id && targetInst.user_id === user.id) return true;
+          if (user?.email && targetInst.email?.toLowerCase() === user.email.toLowerCase()) return true;
+          if (authInstrutorId && targetInst.id === authInstrutorId) return true;
+        }
+      }
+      if (turma) {
+        return isTurmaAssignedToInstrutor(turma);
+      }
+      return false;
+    };
+  }, [currentInstrutor, authInstrutorId, user, instrutores, isTurmaAssignedToInstrutor]);
 
   useEffect(() => {
     if (currentInstrutor) {
@@ -122,14 +191,15 @@ export default function AulasPage() {
     reload();
   }, []);
 
-  // Turmas filtradas para a grade semanal
+  // Turmas filtradas para a grade semanal (apenas turmas efetivamente atribuídas ao instrutor)
   const filteredTurmas = useMemo(() => {
     return turmas.filter(t => {
       let matchInst = true;
-      if (currentInstrutor) {
-        matchInst = t.id_instrutor === currentInstrutor.id;
+      if (isInstrutor && !isAdmin) {
+        matchInst = isTurmaAssignedToInstrutor(t);
       } else if (filterInstrutor !== "ALL") {
-        matchInst = t.id_instrutor === filterInstrutor;
+        const targetInst = instrutores.find(i => i.id === filterInstrutor);
+        matchInst = t.id_instrutor === filterInstrutor || (targetInst?.user_id && t.id_instrutor === targetInst.user_id);
       }
 
       let matchMod = true;
@@ -139,17 +209,21 @@ export default function AulasPage() {
 
       return matchInst && matchMod && t.status_turma === "ATIVA";
     });
-  }, [turmas, currentInstrutor, filterInstrutor, filterModalidade]);
+  }, [turmas, isInstrutor, isAdmin, isTurmaAssignedToInstrutor, filterInstrutor, filterModalidade, instrutores]);
 
   // Aulas filtradas para o histórico
   const filteredAulas = useMemo(() => {
     return aulas.filter(a => {
       const turma = turmas.find(t => t.id === a.id_turma);
       let matchInst = true;
-      if (currentInstrutor) {
-        matchInst = a.id_instrutor === currentInstrutor.id || turma?.id_instrutor === currentInstrutor.id;
+      if (isInstrutor && !isAdmin) {
+        matchInst = isAulaAssignedToInstrutor(a, turma);
       } else if (filterInstrutor !== "ALL") {
-        matchInst = a.id_instrutor === filterInstrutor || turma?.id_instrutor === filterInstrutor;
+        const targetInst = instrutores.find(i => i.id === filterInstrutor);
+        matchInst = a.id_instrutor === filterInstrutor ||
+                    (targetInst?.user_id && a.id_instrutor === targetInst.user_id) ||
+                    turma?.id_instrutor === filterInstrutor ||
+                    (targetInst?.user_id && turma?.id_instrutor === targetInst.user_id);
       }
 
       let matchMod = true;
@@ -159,7 +233,7 @@ export default function AulasPage() {
 
       return matchInst && matchMod;
     });
-  }, [aulas, turmas, currentInstrutor, filterInstrutor, filterModalidade]);
+  }, [aulas, turmas, isInstrutor, isAdmin, isAulaAssignedToInstrutor, filterInstrutor, filterModalidade, instrutores]);
 
   // KPIs
   const total = filteredAulas.length;
@@ -246,10 +320,12 @@ export default function AulasPage() {
                 <span>Diário de Presenças</span>
               </Button>
             </Link>
-            <Button onClick={handleNew} className="rounded-xl shadow-md shadow-primary/20 gap-2 h-9 text-xs">
-              <Plus className="w-4 h-4" />
-              <span>Agendar Aula Extra</span>
-            </Button>
+            {isAdmin && (
+              <Button onClick={handleNew} className="rounded-xl shadow-md shadow-primary/20 gap-2 h-9 text-xs">
+                <Plus className="w-4 h-4" />
+                <span>Agendar Aula Extra</span>
+              </Button>
+            )}
           </div>
         }
       />
@@ -328,7 +404,7 @@ export default function AulasPage() {
               </SelectTrigger>
               <SelectContent className="bg-card/95 border-white/10 max-h-56">
                 <SelectItem value="ALL" className="text-xs font-semibold">Todas as Modalidades</SelectItem>
-                {modalidades.map(m => (
+                {instructorModalidades.map(m => (
                   <SelectItem key={m.id} value={m.id} className="text-xs">
                     {m.nome_modalidade}
                   </SelectItem>
@@ -397,11 +473,13 @@ export default function AulasPage() {
                                   <UserCog className="w-3 h-3 text-emerald-400 shrink-0" />
                                   {inst ? inst.nome_completo : "Sem instrutor"}
                                 </span>
-                                <Link to={`/presencas?turma=${turma.id}`}>
-                                  <span className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-0.5 text-[10px]">
-                                    <ClipboardCheck className="w-3 h-3" /> Fazer Chamada
-                                  </span>
-                                </Link>
+                                {(!isInstrutor || isAdmin || isTurmaAssignedToInstrutor(turma)) && (
+                                  <Link to={`/presencas?turma=${turma.id}`}>
+                                    <span className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-0.5 text-[10px]">
+                                      <ClipboardCheck className="w-3 h-3" /> Fazer Chamada
+                                    </span>
+                                  </Link>
+                                )}
                               </div>
                             </div>
                           );
@@ -431,36 +509,42 @@ export default function AulasPage() {
             searchKeys={["data_aula", "id_turma", "status_aula"]}
             searchPlaceholder="Buscar por data ou turma..."
             filters={filters}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
+            onEdit={isAdmin ? handleEdit : undefined}
+            onDelete={isAdmin ? handleDelete : undefined}
             exportFilename="aulas_movimais"
-            customActions={aula => (
-              <div className="flex items-center gap-1.5">
-                <Link to={`/presencas?turma=${aula.id_turma}&data=${aula.data_aula}`}>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 px-2.5 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 border-emerald-500/30 rounded-lg gap-1"
-                    title="Ver ou fazer chamada desta aula"
-                  >
-                    <ClipboardCheck className="w-3.5 h-3.5" />
-                    <span>Chamada</span>
-                  </Button>
-                </Link>
-                {aula.status_aula === "AGENDADA" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 px-2 text-xs text-sky-400 hover:text-sky-300 hover:bg-sky-500/10 border-sky-500/30 rounded-lg gap-1"
-                    onClick={() => handleConcluirAula(aula)}
-                    title="Marcar aula como realizada"
-                  >
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    <span>Concluir</span>
-                  </Button>
-                )}
-              </div>
-            )}
+            customActions={aula => {
+              const turma = turmas.find(t => t.id === aula.id_turma);
+              const isMine = !isInstrutor || isAdmin || isAulaAssignedToInstrutor(aula, turma);
+              return (
+                <div className="flex items-center gap-1.5">
+                  {isMine && (
+                    <Link to={`/presencas?turma=${aula.id_turma}&data=${aula.data_aula}`}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 px-2.5 text-xs text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 border-emerald-500/30 rounded-lg gap-1"
+                        title="Ver ou fazer chamada desta aula"
+                      >
+                        <ClipboardCheck className="w-3.5 h-3.5" />
+                        <span>Chamada</span>
+                      </Button>
+                    </Link>
+                  )}
+                  {aula.status_aula === "AGENDADA" && isMine && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8 px-2 text-xs text-sky-400 hover:text-sky-300 hover:bg-sky-500/10 border-sky-500/30 rounded-lg gap-1"
+                      onClick={() => handleConcluirAula(aula)}
+                      title="Marcar aula como realizada"
+                    >
+                      <CheckCircle className="w-3.5 h-3.5" />
+                      <span>Concluir</span>
+                    </Button>
+                  )}
+                </div>
+              );
+            }}
             columns={[
               {
                 key: "data_aula",

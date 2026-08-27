@@ -17,6 +17,7 @@ import {
 import { create, update, remove, generateId, STORES, type Turma, type Modalidade, type Matricula, type Instrutor } from "@/lib/store";
 import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const DIAS_SEMANA_OPCOES = [
   "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"
@@ -38,6 +39,7 @@ const emptyTurma = (): Turma => ({
 });
 
 export default function TurmasPage() {
+  const { isAdmin } = useAuth();
   const { data: turmas, reload } = useTable<Turma>(STORES.TURMAS);
   const { data: modalidades } = useTable<Modalidade>(STORES.MODALIDADES);
   const { data: matriculas } = useTable<Matricula>(STORES.MATRICULAS);
@@ -185,10 +187,12 @@ export default function TurmasPage() {
               </Button>
             </div>
 
-            <Button onClick={handleNew} className="rounded-xl shadow-md shadow-primary/20 gap-2">
-              <Plus className="w-4 h-4" />
-              <span>Nova Turma</span>
-            </Button>
+            {isAdmin && (
+              <Button onClick={handleNew} className="rounded-xl shadow-md shadow-primary/20 gap-2">
+                <Plus className="w-4 h-4" />
+                <span>Nova Turma</span>
+              </Button>
+            )}
           </div>
         }
       />
@@ -321,26 +325,28 @@ export default function TurmasPage() {
                     </Button>
                   </Link>
 
-                  <div className="flex items-center gap-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg"
-                      onClick={() => handleEdit(turma)}
-                      title="Editar"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-muted-foreground hover:text-rose-400 rounded-lg"
-                      onClick={() => handleDelete(turma)}
-                      title="Excluir"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
+                  {isAdmin && (
+                    <div className="flex items-center gap-1">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground rounded-lg"
+                        onClick={() => handleEdit(turma)}
+                        title="Editar"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 text-muted-foreground hover:text-rose-400 rounded-lg"
+                        onClick={() => handleDelete(turma)}
+                        title="Excluir"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -359,8 +365,8 @@ export default function TurmasPage() {
           searchKeys={["nome_turma", "faixa_etaria", "sala"]}
           searchPlaceholder="Buscar por turma, horário ou sala..."
           filters={filters}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
+          onEdit={isAdmin ? handleEdit : undefined}
+          onDelete={isAdmin ? handleDelete : undefined}
           exportFilename="turmas_movimais"
           customActions={t => (
             <Link to={`/presencas?turma=${t.id}`}>

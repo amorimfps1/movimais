@@ -16,6 +16,7 @@ import { create, update, remove, generateId, STORES, type Instrutor, type Modali
 import { maskCPF } from "@/lib/utils";
 import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const emptyInstrutor = (): Instrutor => ({
   id: generateId(),
@@ -30,6 +31,7 @@ const emptyInstrutor = (): Instrutor => ({
 });
 
 export default function InstrutoresPage() {
+  const { isAdmin } = useAuth();
   const { data: instrutores, reload } = useTable<Instrutor>(STORES.INSTRUTORES);
   const { data: modalidades } = useTable<Modalidade>(STORES.MODALIDADES);
   const { data: turmas } = useTable<Turma>(STORES.TURMAS);
@@ -159,10 +161,12 @@ export default function InstrutoresPage() {
         description="Corpo docente, especialidades e profissionais responsáveis pelas modalidades do MCJB"
         badge={`${total} Profissionais`}
         action={
-          <Button onClick={handleNew} className="rounded-xl shadow-md shadow-primary/20 gap-2">
-            <Plus className="w-4 h-4" />
-            <span>Novo Instrutor</span>
-          </Button>
+          isAdmin ? (
+            <Button onClick={handleNew} className="rounded-xl shadow-md shadow-primary/20 gap-2">
+              <Plus className="w-4 h-4" />
+              <span>Novo Instrutor</span>
+            </Button>
+          ) : undefined
         }
       />
 
@@ -196,8 +200,8 @@ export default function InstrutoresPage() {
         searchKeys={["nome_completo", "cpf", "email", "telefone", "especialidades"]}
         searchPlaceholder="Buscar por nome, CPF, contato ou modalidade..."
         filters={filters}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
+        onEdit={isAdmin ? handleEdit : undefined}
+        onDelete={isAdmin ? handleDelete : undefined}
         exportFilename="instrutores_movimais"
         customActions={inst => (
           inst.telefone ? (
