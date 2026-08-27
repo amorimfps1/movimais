@@ -1,6 +1,10 @@
 # MOVI+ — Sistema de Gestão do MCJB
 
+<<<<<<< HEAD
 Plataforma web completa para gestão operacional, pedagógica e financeira de atividades, alunos, leads, matrículas, turmas, instrutores, pagamentos, financeiro analítico, presenças e aulas do **Movimento Comunitário do Jardim Botânico (MCJB)** em Brasília-DF.
+=======
+Plataforma web completa para gestão operacional, pedagógica e financeira de atividades, alunos, leads, matrículas, turmas, instrutores, pagamentos, presenças e aulas do **Movimento Comunitário do Jardim Botânico (MCJB)** em Brasília-DF.
+>>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
 
 ---
 
@@ -17,7 +21,10 @@ Plataforma web completa para gestão operacional, pedagógica e financeira de at
 | **Radix UI / shadcn** | — | Componentes headless e acessíveis (Dialogs, Selects, Dropdowns, Tooltips) |
 | **React Router DOM** | 6.x | Roteamento dinâmico SPA com proteção por perfil e code splitting |
 | **TanStack Query** | 5.x | Gerenciamento de estado e cache assíncrono |
+<<<<<<< HEAD
 | **Zod** | 3.x | Validação e tipagem de schemas de dados |
+=======
+>>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
 | **Recharts** | 2.x | Visualizações gráficas analíticas interativas (Bar, Pie, Area) |
 | **Lucide React** | — | Pacote abrangente de ícones modernos |
 | **Sonner / Toaster** | — | Notificações toast responsivas em tempo real |
@@ -56,7 +63,10 @@ movimais/
 │   │   ├── AppSidebar.tsx      # Sidebar colapsável alternativa
 │   │   ├── CpfInput.tsx        # Campo com máscara automática e validação de CPF
 │   │   ├── DataTable.tsx       # Tabela universal com busca debounced, filtros, ordenação, paginação e exportação CSV
+<<<<<<< HEAD
 │   │   ├── ErrorBoundary.tsx   # Tratamento e captura global de erros React
+=======
+>>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
 │   │   ├── MoviLogo.tsx        # Logotipo vetorial responsivo
 │   │   ├── NavLink.tsx         # Link com detecção de rota ativa
 │   │   ├── PageHeader.tsx      # Cabeçalho padronizado de páginas com ações e badges
@@ -74,8 +84,11 @@ movimais/
 │   │   ├── store.ts            # Interfaces TypeScript, constantes de tabelas e CRUD genérico
 │   │   ├── matriculaUtils.ts   # Utilitários de cálculo de planos (Mensal, Trimestral, Anual) e vencimento
 │   │   └── utils.ts            # Utilitários de formatação de datas (DD/MM/YYYY), máscara de CPF e classes CSS
+<<<<<<< HEAD
 │   ├── types/
 │   │   └── financeiro.ts       # Schemas Zod e tipos de receita por modalidade, repasse e KPIs
+=======
+>>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
 │   ├── pages/
 │   │   ├── AuthPage.tsx        # Tela de login e cadastro com aviso de aprovação pendente
 │   │   ├── Dashboard.tsx       # Painel analítico com KPIs financeiros, novos alunos e 4 gráficos Recharts
@@ -85,8 +98,12 @@ movimais/
 │   │   ├── TurmasPage.tsx      # Gestão de turmas com grade de dias da semana, horários, salas e instrutores
 │   │   ├── ModalidadesPage.tsx # Catálogo de modalidades esportivas e culturais (19 pré-cadastradas)
 │   │   ├── InstrutoresPage.tsx # Cadastro do corpo docente com especialidades múltiplas (1:N) e WhatsApp
+<<<<<<< HEAD
 │   │   ├── PagamentosPage.tsx  # Gestão de lançamentos financeiros operacionais e ação rápida "Dar Baixa"
 │   │   ├── FinanceiroPage.tsx  # Painel financeiro analítico avançado, repasses de professores e receita por modalidade
+=======
+│   │   ├── PagamentosPage.tsx  # Gestão financeira, controle de mensalidades e ação rápida "Dar Baixa"
+>>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
 │   │   ├── PresencasPage.tsx   # Diário de classe, chamada em lote por turma/data e filtros por instrutor
 │   │   ├── AulasPage.tsx       # Grade e agendamento de aulas por turma e instrutor
 │   │   ├── UsuariosPage.tsx    # Painel de aprovação de novos cadastros, cargos e exclusão de contas
@@ -112,10 +129,17 @@ movimais/
 
 ### Pré-requisitos
 
+<<<<<<< HEAD
 - **Node.js** 18+ e **npm**
 - Conta e projeto configurado no **Supabase**
 
 ### 1. Clonar e Instalar
+=======
+- **Node.js** 18+ e **npm** (ou **bun**)
+- Conta e projeto configurado no **Supabase**
+
+### 1. Clonar o repositório e instalar as dependências
+>>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
 
 ```powershell
 git clone <url-do-repositorio>
@@ -123,7 +147,11 @@ cd movimais
 npm install
 ```
 
+<<<<<<< HEAD
 ### 2. Configurar Variáveis de Ambiente
+=======
+### 2. Configurar as variáveis de ambiente
+>>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
 
 Crie o arquivo `.env` na raiz do projeto:
 
@@ -183,7 +211,11 @@ O sistema implementa uma camada de governança e controle de acesso baseada em p
 | Perfil | Acesso aos Módulos | Destino Inicial |
 |---|---|---|
 | **`secretaria`** | Acesso irrestrito a todos os módulos, relatórios financeiros e gestão de acessos | `/` (Dashboard) |
+<<<<<<< HEAD
 | **`coordenacao`** | Gestão de alunos, leads, matrículas, turmas, modalidades, instrutores, pagamentos, financeiro analítico, presenças, aulas e aprovação de novos usuários | `/` (Dashboard) |
+=======
+| **`coordenacao`** | Gestão de alunos, leads, matrículas, turmas, modalidades, instrutores, pagamentos, presenças, aulas e aprovação de novos usuários | `/` (Dashboard) |
+>>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
 | **`instrutor`** | Acesso operacional às suas turmas, modalidades, diário de presenças e calendário de aulas | `/aulas` |
 
 ### Fluxo de Novos Usuários (Approval Workflow)
@@ -247,6 +279,7 @@ O sistema implementa uma camada de governança e controle de acesso baseada em p
 - Vinculação com o usuário de acesso (`user_id`).
 - Contato direto via WhatsApp.
 
+<<<<<<< HEAD
 ### 💰 Pagamentos (Lançamentos Operacionais)
 - Lançamentos vinculados por matrícula e aluno.
 - Tipos de lançamento: Mensalidade, Taxa de Matrícula, Material, Reposição, Ajuste.
@@ -264,6 +297,14 @@ O sistema implementa uma camada de governança e controle de acesso baseada em p
 - **Exportação Consolidada**: Download de relatório analítico completo em formato CSV formatado para Excel (UTF-8 com BOM).
 - **Validação Rigorosa com Zod**: Tipagem e sanitização dos dados financeiros via schemas Zod (`src/types/financeiro.ts`).
 
+=======
+### 💰 Pagamentos & Financeiro
+- Lançamentos vinculados por matrícula e aluno.
+- Tipos de lançamento: Mensalidade, Taxa de Matrícula, Material, Reposição, Ajuste.
+- **Ação "Dar Baixa"**: Quitação instantânea com registro automático da data de pagamento e valor recebido.
+- Indicadores de receita recebida, valores pendentes, inadimplência e taxa de adimplência.
+
+>>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
 ### ✅ Presenças (Diário de Classe)
 - Registro de chamada por turma, data e aula.
 - Filtros inteligentes por modalidade e instrutor (instrutores visualizam diretamente suas respectivas turmas).

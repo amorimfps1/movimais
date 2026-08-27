@@ -9,6 +9,7 @@
 
 **MOVI+** é uma aplicação web SPA (Single Page Application) moderna desenvolvida para o **Movimento Comunitário do Jardim Botânico (MCJB)**, uma instituição comunitária em Brasília-DF que oferece atividades esportivas, artísticas, culturais e de bem-estar.
 
+<<<<<<< HEAD
 O sistema centraliza a gestão operacional, pedagógica e financeira de:
 - **Alunos**: Cadastro completo de alunos, dados de contato, responsáveis para menores e observações médicas.
 - **Leads & Captação**: Funil de atendimento comercial e conversão direta de contatos em alunos em 1 clique.
@@ -18,6 +19,16 @@ O sistema centraliza a gestão operacional, pedagógica e financeira de:
 - **Instrutores**: Gestão do corpo docente, especialidades múltiplas (1:N), vinculação com conta de acesso e contato direto via WhatsApp.
 - **Pagamentos Operacionais**: Lançamentos financeiros por matrícula e aluno, controle de mensalidades e ação rápida "Dar Baixa".
 - **Painel Financeiro & Repasses (`/financeiro`)**: Dashboard analítico avançado de arrecadação por modalidade, cálculo de repasses a professores (baseado estritamente em mensalidades), retenção de taxas e evolução histórica.
+=======
+O sistema centraliza a gestão operacional e administrativa de:
+- **Alunos**: Cadastro completo de alunos, dados de contato, responsáveis para menores e observações médicas.
+- **Leads & Captação**: Funil de atendimento comercial e conversão direta de contatos em alunos em 1 clique.
+- **Matrículas & Planos**: Vínculo aluno ↔ modalidade ↔ turma, planos (Mensal, Trimestral, Anual), cálculo automático de vencimento e liberação para aula.
+- **Turmas & Grade Horária**: Agrupamento por modalidade, faixa etária, dias da semana, horários, salas e atribuição de instrutores.
+- **Modalidades**: Catálogo de atividades esportivas, artísticas, fitness e bem-estar (19 modalidades pré-cadastradas).
+- **Instrutores**: Gestão do corpo docente, especialidades múltiplas (1:N), vinculação com conta de acesso e contato direto via WhatsApp.
+- **Financeiro & Pagamentos**: Controle de mensalidades, taxas de matrícula, baixa rápida de recebimentos, previsão e inadimplência.
+>>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
 - **Presenças & Diário de Classe**: Chamada em lote por turma, data e aula, com filtros inteligentes por instrutor e modalidade.
 - **Aulas & Calendário**: Gestão de aulas agendadas e realizadas por turma e instrutor.
 - **Gestão de Usuários & Aprovações**: Sistema de solicitação de cadastro, fluxo de aprovação/rejeição pela coordenação/secretaria e atribuição de perfis (RBAC).
@@ -54,10 +65,16 @@ Componente React
             └── reload()                ← re-fetch dos dados atualizados
 ```
 
+<<<<<<< HEAD
 ### Gerenciamento de estado e Validação
 - **Estado Local Reativo**: `useState` + `useMemo` / `useCallback` para cálculos de KPIs e filtros em memória sem re-renderizações desnecessárias.
 - **AuthContext (`useAuth`)**: Contexto global de autenticação, monitorando sessão Supabase, status cadastral (`pendente`, `aprovado`, `rejeitado`), papéis RBAC (`secretaria`, `coordenacao`, `instrutor`), especialidades do professor e `id_instrutor`.
 - **Validação de Tipos com Zod**: Schemas tipados em `src/types/financeiro.ts` para garantir integridade matemática e formatação dos relatórios financeiros.
+=======
+### Gerenciamento de estado
+- **Estado Local Reativo**: `useState` + `useMemo` / `useCallback` para cálculos de KPIs e filtros em memória sem re-renderizações desnecessárias.
+- **AuthContext (`useAuth`)**: Contexto global de autenticação, monitorando sessão Supabase, status cadastral (`pendente`, `aprovado`, `rejeitado`), papéis RBAC (`secretaria`, `coordenacao`, `instrutor`), especialidades do professor e `id_instrutor`.
+>>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
 - **TanStack Query**: Provedor configurado em `src/App.tsx` com `staleTime: 5min` para queries assíncronas.
 
 ---
@@ -121,6 +138,7 @@ Exemplo de ID gerado: `A3F1B2C4`.
 | `isMatriculaTrancada(status)` | Identifica `SUSPENSA_30_DIAS` ou `TRANCADA_JUSTIFICADA` |
 | `isMatriculaInadimplente(status)` | Identifica `BLOQUEADA_INADIMPLENCIA` |
 | `isMatriculaVencida(dataFim)` | Verifica se a data de término expirou em relação à data atual |
+<<<<<<< HEAD
 
 ### Schemas e Tipos Financeiros (`src/types/financeiro.ts`)
 
@@ -131,6 +149,8 @@ Exemplo de ID gerado: `A3F1B2C4`.
 | `ModalidadeMatriculasSchema`| Distribuição de matrículas ativas e percentual de participação de cada atividade |
 | `KpiFinancialSummarySchema` | Indicadores de receita acumulada, total a repassar, taxas de matrícula, ticket médio e taxa de adimplência |
 | `EvolucaoFinanceiraMensalSchema` | Histórico mensal comparando receitas de mensalidades, taxas extras e repasse a professores |
+=======
+>>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
 
 ---
 
@@ -147,7 +167,11 @@ export type UserStatus = "pendente" | "aprovado" | "rejeitado";
 | Perfil | Nível Admin (`isAdmin`) | Destino Inicial | Módulos com Acesso |
 |---|---|---|---|
 | **`secretaria`** | ✅ Sim | `/` (Dashboard) | Acesso total a todas as rotas e gestão administrativa/financeira/usuários |
+<<<<<<< HEAD
 | **`coordenacao`** | ✅ Sim | `/` (Dashboard) | Acesso a todos os módulos operacionais, pagamentos, financeiro analítico e aprovação de usuários |
+=======
+| **`coordenacao`** | ✅ Sim | `/` (Dashboard) | Acesso a todos os módulos operacionais, financeiros e aprovação de usuários |
+>>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
 | **`instrutor`** | ❌ Não | `/aulas` | Acesso restrito a Turmas, Modalidades, Presenças e Aulas |
 
 ### Fluxo de Aprovação de Novos Usuários (Approval Workflow)
@@ -267,6 +291,7 @@ Localização: `supabase/migrations/`
 
 ## 10. Convenções, Regras de Negócio e Gotchas
 
+<<<<<<< HEAD
 1. **Regras de Repasse Financeiro aos Professores (Regra de Ouro)**:
    - O repasse do professor é calculado **exclusivamente sobre lançamentos com `tipo_lancamento = 'MENSALIDADE'`**.
    - Taxas de matrícula, material didático, multas e reposições pertencem integralmente à escola/MCJB e são separadas na coluna `total_taxas_nao_repassadas`.
@@ -275,10 +300,16 @@ Localização: `supabase/migrations/`
 3. **Valores Nulos em FKs Opcionais**:
    - Ao gravar matrículas, turmas e pagamentos, campos de chave estrangeira vazios no formulário devem ser transmitidos como `null` (e nunca como string vazia `""`), evitando erros de violação de FK no PostgreSQL.
 4. **Cálculo de Vigência de Matrícula**:
+=======
+1. **Valores Nulos em FKs Opcionais**:
+   - Ao gravar matrículas, turmas e pagamentos, campos de chave estrangeira vazios no formulário devem ser transmitidos como `null` (e nunca como string vazia `""`), evitando erros de violação de FK no PostgreSQL.
+2. **Cálculo de Vigência de Matrícula**:
+>>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
    - `MENSAL`: soma 1 mês.
    - `TRIMESTRAL`: soma 3 meses.
    - `ANUAL`: soma 12 meses.
    - Status `SUSPENSA_30_DIAS` ou `TRANCADA_JUSTIFICADA`: prorroga a data final automaticamente em +30 dias.
+<<<<<<< HEAD
 5. **Baixa Rápida de Pagamento**:
    - O botão "Dar Baixa" em `PagamentosPage` atualiza o status para `PAGO`, registra a `data_pagamento` atual e preenche o `valor_pago` caso esteja zerado.
 6. **Visibilidade e Acesso de Instrutores**:
@@ -286,4 +317,13 @@ Localização: `supabase/migrations/`
 7. **Formatação de Datas em Todo o Sistema**:
    - Todas as exibições visuais utilizam o formato brasileiro `DD/MM/YYYY` via `formatDateToBR` em `src/lib/utils.ts`.
 8. **Proteção de Auto-Alteração em Usuários**:
+=======
+3. **Baixa Rápida de Pagamento**:
+   - O botão "Dar Baixa" em `PagamentosPage` atualiza o status para `PAGO`, registra a `data_pagamento` atual e preenche o `valor_pago` caso esteja zerado.
+4. **Visibilidade e Acesso de Instrutores**:
+   - O perfil `instrutor` tem acesso simplificado e focado nas turmas e presenças que correspondem às suas modalidades/especialidades ou à sua atribuição direta na turma.
+5. **Formatação de Datas em Todo o Sistema**:
+   - Todas as exibições visuais utilizam o formato brasileiro `DD/MM/YYYY` via `formatDateToBR` em `src/lib/utils.ts`.
+6. **Proteção de Auto-Alteração em Usuários**:
+>>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
    - Nenhum administrador pode excluir a sua própria conta ou desmarcar os seus próprios papéis de acesso em `/usuarios`.
