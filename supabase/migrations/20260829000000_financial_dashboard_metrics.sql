@@ -14,7 +14,9 @@ CREATE POLICY "Admin total pagamentos"
 
 -- 2. View Otimizada: Arrecadação Consolidada por Modalidade
 -- Regra: Consolida todo o valor pago (mensalidades, taxas de matrícula, reposições, materiais, ajustes)
-CREATE OR REPLACE VIEW public.view_arrecadacao_modalidades AS
+CREATE OR REPLACE VIEW public.view_arrecadacao_modalidades
+WITH (security_invoker = true)
+AS
 SELECT
   m.id AS id_modalidade,
   m.nome_modalidade,
@@ -34,7 +36,9 @@ GROUP BY m.id, m.nome_modalidade, m.area;
 -- REGRA CRÍTICA DE NEGÓCIO:
 -- O valor atribuído ao professor inclui APENAS pagamentos com tipo_lancamento = 'MENSALIDADE' e status = 'PAGO'.
 -- Taxas de matrícula, materiais e outros custos são retidos pela escola e NÃO entram no repasse.
-CREATE OR REPLACE VIEW public.view_repasse_professores AS
+CREATE OR REPLACE VIEW public.view_repasse_professores
+WITH (security_invoker = true)
+AS
 SELECT
   i.id AS id_instrutor,
   i.nome_completo AS nome_instrutor,
@@ -66,7 +70,9 @@ LEFT JOIN public.pagamentos p ON p.id_matricula = mat.id
 GROUP BY i.id, i.nome_completo, i.email, i.funcao;
 
 -- 4. View Otimizada: Matrículas Ativas por Modalidade
-CREATE OR REPLACE VIEW public.view_matriculas_ativas_modalidades AS
+CREATE OR REPLACE VIEW public.view_matriculas_ativas_modalidades
+WITH (security_invoker = true)
+AS
 SELECT
   m.id AS id_modalidade,
   m.nome_modalidade,
