@@ -163,6 +163,27 @@ function toast({ ...props }: Toast) {
   };
 }
 
+toast.error = (msg: string | Toast, opts?: Partial<Toast>) => {
+  if (typeof msg === "string") {
+    return toast({ title: msg, variant: "destructive", ...opts });
+  }
+  return toast({ variant: "destructive", ...msg });
+};
+
+toast.success = (msg: string | Toast, opts?: Partial<Toast>) => {
+  if (typeof msg === "string") {
+    return toast({ title: msg, ...opts });
+  }
+  return toast(msg);
+};
+
+toast.info = (msg: string | Toast, opts?: Partial<Toast>) => {
+  if (typeof msg === "string") {
+    return toast({ title: msg, ...opts });
+  }
+  return toast(msg);
+};
+
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState);
 
@@ -176,9 +197,17 @@ function useToast() {
     };
   }, [state]);
 
+  const customToast = React.useMemo(() => {
+    const fn = (props: Toast) => toast(props);
+    fn.error = toast.error;
+    fn.success = toast.success;
+    fn.info = toast.info;
+    return fn;
+  }, []);
+
   return {
     ...state,
-    toast,
+    toast: customToast,
     dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
   };
 }

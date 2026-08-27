@@ -5,7 +5,7 @@ import {
   Users, UserPlus, GraduationCap, Calendar, Dumbbell,
   CreditCard, ClipboardCheck, BookOpen, LayoutDashboard,
   UserCog, Shield, LogOut, Menu, X, ChevronDown, Clock,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, TrendingUp
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -29,6 +29,7 @@ const allItems = [
   { label: "Modalidades", icon: Dumbbell, path: "/modalidades", roles: ["secretaria", "coordenacao", "instrutor"] },
   { label: "Instrutores", icon: UserCog, path: "/instrutores", roles: ["secretaria", "coordenacao"] },
   { label: "Pagamentos", icon: CreditCard, path: "/pagamentos", roles: ["secretaria", "coordenacao"] },
+  { label: "Financeiro", icon: TrendingUp, path: "/financeiro", roles: ["secretaria", "coordenacao"] },
   { label: "Presenças", icon: ClipboardCheck, path: "/presencas", roles: ["secretaria", "coordenacao", "instrutor"] },
   { label: "Aulas", icon: BookOpen, path: "/aulas", roles: ["secretaria", "coordenacao", "instrutor"] },
   { label: "Usuários e Aprovações", icon: Shield, path: "/usuarios", roles: ["secretaria", "coordenacao"] },

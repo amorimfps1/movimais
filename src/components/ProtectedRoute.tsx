@@ -1,7 +1,7 @@
 import { ReactNode } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth, AppRole } from "@/hooks/useAuth";
-import { Loader2, Clock, LogOut, ShieldAlert } from "lucide-react";
+import { Loader2, Clock, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import MoviLogo from "@/components/MoviLogo";
 

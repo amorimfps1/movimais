@@ -130,6 +130,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setLoading(false);
       }
+    }).catch((err) => {
+      console.warn("Falha ao recuperar sessão no Supabase:", err);
+      setLoading(false);
     });
 
     return () => sub.subscription.unsubscribe();

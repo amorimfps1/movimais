@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppLayout from "@/components/AppLayout";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
@@ -16,6 +17,7 @@ const TurmasPage = lazy(() => import("@/pages/TurmasPage"));
 const ModalidadesPage = lazy(() => import("@/pages/ModalidadesPage"));
 const InstrutoresPage = lazy(() => import("@/pages/InstrutoresPage"));
 const PagamentosPage = lazy(() => import("@/pages/PagamentosPage"));
+const FinanceiroPage = lazy(() => import("@/pages/FinanceiroPage"));
 const PresencasPage = lazy(() => import("@/pages/PresencasPage"));
 const AulasPage = lazy(() => import("@/pages/AulasPage"));
 const AuthPage = lazy(() => import("@/pages/AuthPage"));
@@ -56,36 +58,39 @@ const App = () => (
       <Toaster />
       <BrowserRouter>
         <AuthProvider>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/auth" element={<AuthPage />} />
-              <Route element={<ProtectedRoute />}>
-                <Route element={<AppLayout />}>
-                  {/* Rota inicial dinâmica por cargo */}
-                  <Route path="/" element={<HomeRoute />} />
+          <ErrorBoundary>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/auth" element={<AuthPage />} />
+                <Route element={<ProtectedRoute />}>
+                  <Route element={<AppLayout />}>
+                    {/* Rota inicial dinâmica por cargo */}
+                    <Route path="/" element={<HomeRoute />} />
 
-                  {/* Rotas acessíveis para instrutores e equipe administrativa */}
-                  <Route path="/turmas" element={<TurmasPage />} />
-                  <Route path="/modalidades" element={<ModalidadesPage />} />
-                  <Route path="/presencas" element={<PresencasPage />} />
-                  <Route path="/aulas" element={<AulasPage />} />
+                    {/* Rotas acessíveis para instrutores e equipe administrativa */}
+                    <Route path="/turmas" element={<TurmasPage />} />
+                    <Route path="/modalidades" element={<ModalidadesPage />} />
+                    <Route path="/presencas" element={<PresencasPage />} />
+                    <Route path="/aulas" element={<AulasPage />} />
 
-                  {/* Rotas restritas para Secretaria e Coordenação */}
-                  <Route element={<ProtectedRoute requireRoles={["secretaria", "coordenacao"]} />}>
-                    <Route path="/alunos" element={<AlunosPage />} />
-                    <Route path="/leads" element={<LeadsPage />} />
-                    <Route path="/matriculas" element={<MatriculasPage />} />
-                    <Route path="/instrutores" element={<InstrutoresPage />} />
-                    <Route path="/pagamentos" element={<PagamentosPage />} />
+                    {/* Rotas restritas para Secretaria e Coordenação */}
+                    <Route element={<ProtectedRoute requireRoles={["secretaria", "coordenacao"]} />}>
+                      <Route path="/alunos" element={<AlunosPage />} />
+                      <Route path="/leads" element={<LeadsPage />} />
+                      <Route path="/matriculas" element={<MatriculasPage />} />
+                      <Route path="/instrutores" element={<InstrutoresPage />} />
+                      <Route path="/pagamentos" element={<PagamentosPage />} />
+                      <Route path="/financeiro" element={<FinanceiroPage />} />
+                    </Route>
+
+                    {/* Gestão de Acessos e Usuários */}
+                    <Route path="/usuarios" element={<ProtectedRoute requireAdmin><UsuariosPage /></ProtectedRoute>} />
                   </Route>
-
-                  {/* Gestão de Acessos e Usuários */}
-                  <Route path="/usuarios" element={<ProtectedRoute requireAdmin><UsuariosPage /></ProtectedRoute>} />
                 </Route>
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
