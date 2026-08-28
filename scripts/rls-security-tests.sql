@@ -179,13 +179,14 @@ BEGIN
         v_failed := v_failed + 1;
     END;
 
-    -- 2.9 Tentativa de chamar RPCs Administrativas (DEVE BLOQUEAR)
+    -- 2.9 Tentativa de chamar RPCs Administrativas com Spoofing de Admin (DEVE BLOQUEAR)
     BEGIN
-        PERFORM public.approve_user(c_instrutor_id, 'instrutor', c_instrutor_id);
-        RAISE NOTICE '[FAIL] Instrutor conseguiu chamar approve_user (Falha de segurança!)';
+        -- Tenta aprovar passando o ID da secretaria como parâmetro, mas autenticado como instrutor
+        PERFORM public.approve_user(c_instrutor_id, 'secretaria', c_secretaria_id);
+        RAISE NOTICE '[FAIL] Instrutor conseguiu forjar aprovação com ID de secretaria!';
         v_failed := v_failed + 1;
     EXCEPTION WHEN OTHERS THEN
-        RAISE NOTICE '[PASS] Instrutor impedido de executar RPC approve_user';
+        RAISE NOTICE '[PASS] Instrutor impedido de executar RPC approve_user mesmo forjando _approver_id';
         v_passed := v_passed + 1;
     END;
 

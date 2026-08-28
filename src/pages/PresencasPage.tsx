@@ -232,10 +232,13 @@ export default function PresencasPage() {
     setLoadingChamada(true);
 
     try {
-      // Alunos com matrícula ativa nesta turma
-      const matriculasTurma = matriculas.filter(
-        m => m.id_turma === targetTurmaId && ["ATIVA", "PENDENTE_LIBERACAO"].includes(m.status_matricula)
-      );
+      // Alunos com matrícula ativa e liberada nesta turma (ou experimental)
+      const matriculasTurma = matriculas.filter(m => {
+        if (m.id_turma !== targetTurmaId) return false;
+        if (m.status_matricula === "ATIVA" && m.liberado_para_aula) return true;
+        if (m.status_matricula === "EXPERIMENTAL" && targetTurma?.permite_experimental) return true;
+        return false;
+      });
 
       // Busca presenças já existentes para turma + data
       const { data: existentes } = await supabase
@@ -524,7 +527,7 @@ export default function PresencasPage() {
             {turmasDoDia.map(turma => {
               const mod = modalidades.find(m => m.id === turma.id_modalidade);
               const inst = instrutores.find(i => i.id === turma.id_instrutor);
-              const matriculados = matriculas.filter(m => m.id_turma === turma.id && m.status_matricula === "ATIVA").length;
+              const matriculados = matriculas.filter(m => m.id_turma === turma.id && ((m.status_matricula === "ATIVA" && m.liberado_para_aula) || (m.status_matricula === "EXPERIMENTAL" && turma.permite_experimental))).length;
               const isSelected = idTurma === turma.id && chamadaAberta;
               const horarioTexto = turma.horario_inicio
                 ? `${turma.horario_inicio.slice(0, 5)} às ${turma.horario_fim?.slice(0, 5) || '?'}`

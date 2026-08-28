@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, DollarSign, CheckCircle2, AlertTriangle, Clock, Receipt, Check, Eye } from "lucide-react";
-import { create, update, remove, generateId, STORES, type Pagamento, type Aluno, type Matricula } from "@/lib/store";
+import { create, update, remove, generateId, STORES, type Pagamento, type Aluno, type Matricula, type Modalidade } from "@/lib/store";
 import { formatDateToBR } from "@/lib/utils";
 import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
@@ -25,6 +25,7 @@ export default function PagamentosPage() {
   const { data: pagamentos, reload } = useTable<Pagamento>(STORES.PAGAMENTOS);
   const { data: alunos } = useTable<Aluno>(STORES.ALUNOS);
   const { data: matriculas } = useTable<Matricula>(STORES.MATRICULAS);
+  const { data: modalidades } = useTable<Modalidade>(STORES.MODALIDADES);
 
   const [open, setOpen] = useState(false);
   const [viewItem, setViewItem] = useState<Pagamento | null>(null);
@@ -35,6 +36,7 @@ export default function PagamentosPage() {
   // Maps para busca O(1)
   const alunosMap = useMemo(() => new Map(alunos.map(a => [a.id, a])), [alunos]);
   const matriculasMap = useMemo(() => new Map(matriculas.map(m => [m.id, m])), [matriculas]);
+  const modalidadesMap = useMemo(() => new Map(modalidades.map(m => [m.id, m])), [modalidades]);
 
   // KPIs Financeiros Otimizados
   const { totalRecebido, totalPendente, totalAtrasado, taxaAdimplencia } = useMemo(() => {
@@ -63,8 +65,18 @@ export default function PagamentosPage() {
   ), [alunos]);
 
   const matriculaOptions = useMemo(() => (
-    matriculas.map(m => <SelectItem key={m.id} value={m.id}>{m.id}</SelectItem>)
-  ), [matriculas]);
+    matriculas.map(m => {
+      const aluno = alunosMap.get(m.id_aluno);
+      const mod = modalidadesMap.get(m.id_modalidade);
+      const alunoNome = aluno?.nome_completo || m.id_aluno;
+      const modNome = mod?.nome_modalidade || "Modalidade";
+      return (
+        <SelectItem key={m.id} value={m.id}>
+          {alunoNome} — {modNome} (#{m.id})
+        </SelectItem>
+      );
+    })
+  ), [matriculas, alunosMap, modalidadesMap]);
 
   const handleNew = useCallback(() => {
     setEditingItem(null);
@@ -109,6 +121,10 @@ export default function PagamentosPage() {
   }, [reload, toast]);
 
   const handleSave = useCallback(async () => {
+    if (!form.id_aluno) {
+      toast({ title: "Selecione o aluno", variant: "destructive" });
+      return;
+    }
     try {
       const payload = {
         ...form,

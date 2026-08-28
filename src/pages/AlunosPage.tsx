@@ -78,8 +78,14 @@ export default function AlunosPage() {
       toast({ title: "Preencha o CPF", variant: "destructive" });
       return;
     }
-    if (stripCPF(form.cpf).length === 11 && !validateCPF(form.cpf)) {
-      toast({ title: "CPF inválido", description: "Verifique os dígitos do CPF do aluno.", variant: "destructive" });
+    const cleanCpf = stripCPF(form.cpf);
+    if (cleanCpf.length !== 11 || !validateCPF(cleanCpf)) {
+      toast({ title: "CPF inválido", description: "O CPF deve conter 11 dígitos válidos.", variant: "destructive" });
+      return;
+    }
+    const duplicateCpf = alunos.find(a => stripCPF(a.cpf) === cleanCpf && (!editingItem || a.id !== editingItem.id));
+    if (duplicateCpf) {
+      toast({ title: "CPF já cadastrado", description: `Este CPF já pertence ao aluno ${duplicateCpf.nome_completo}.`, variant: "destructive" });
       return;
     }
     try {

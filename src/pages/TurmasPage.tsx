@@ -102,6 +102,10 @@ export default function TurmasPage() {
       toast({ title: "Preencha o nome da turma", variant: "destructive" });
       return;
     }
+    if (!form.id_modalidade) {
+      toast({ title: "Selecione a modalidade", variant: "destructive" });
+      return;
+    }
     try {
       const payload = {
         ...form,

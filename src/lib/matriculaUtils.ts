@@ -40,11 +40,17 @@ export function calcularDataFimPrevista(
 
   if (isNaN(ano) || isNaN(mes) || isNaN(dia)) return '';
 
-  const date = new Date(ano, mes, dia);
-
-  // Somar os meses do plano
+  // Somar os meses do plano com ajuste para o último dia do mês alvo
   const mesesAdicionais = MESES_POR_PLANO[tipoPlano?.toUpperCase()] ?? 3;
-  date.setMonth(date.getMonth() + mesesAdicionais);
+  const targetMonthIndex = mes + mesesAdicionais;
+  const targetYear = ano + Math.floor(targetMonthIndex / 12);
+  const targetMonth = targetMonthIndex % 12;
+
+  // Descobre o último dia do mês de destino para evitar overflow em meses de 30/28 dias
+  const lastDayOfTargetMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const targetDay = Math.min(dia, lastDayOfTargetMonth);
+
+  const date = new Date(targetYear, targetMonth, targetDay);
 
   // Extensão automática para trancamento por saúde / suspensão
   let diasExtras = diasProrrogacao;

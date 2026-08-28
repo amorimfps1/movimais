@@ -25,6 +25,7 @@ const emptyLead = (): Lead => ({
 
 export default function LeadsPage() {
   const { data: leads, reload } = useTable<Lead>(STORES.LEADS);
+  const { data: alunos, reload: reloadAlunos } = useTable<Aluno>(STORES.ALUNOS);
   const [open, setOpen] = useState(false);
   const [viewItem, setViewItem] = useState<Lead | null>(null);
   const [editingItem, setEditingItem] = useState<Lead | null>(null);
@@ -92,9 +93,36 @@ export default function LeadsPage() {
     }
   }, [editingItem, form, reload, toast]);
 
-  // Conversão de Lead em Aluno em 1 clique
+  // Conversão de Lead em Aluno em 1 clique (com prevenção de duplicidade)
   const handleConverterEmAluno = useCallback(async (lead: Lead) => {
     try {
+      const cleanLeadCpf = lead.cpf ? lead.cpf.replace(/\D/g, "") : "";
+      const cleanLeadEmail = lead.email ? lead.email.trim().toLowerCase() : "";
+
+      // Verifica se já existe um aluno com o mesmo CPF ou E-mail
+      const alunoExistente = alunos.find(a => {
+        const aCpf = a.cpf ? a.cpf.replace(/\D/g, "") : "";
+        const aEmail = a.email ? a.email.trim().toLowerCase() : "";
+        if (cleanLeadCpf && aCpf && cleanLeadCpf === aCpf) return true;
+        if (cleanLeadEmail && aEmail && cleanLeadEmail === aEmail) return true;
+        return false;
+      });
+
+      if (alunoExistente) {
+        // Aluno já existe: apenas atualiza o Lead como convertido e vinculado
+        await update(STORES.LEADS, {
+          ...lead,
+          status_lead: "CONVERTIDO",
+          converteu_em_aluno: true,
+        });
+        await reload();
+        toast({
+          title: "🎉 Lead vinculado a Aluno existente!",
+          description: `${lead.nome} já possui cadastro no MOVI+ (${alunoExistente.nome_completo}). O lead foi marcado como convertido.`,
+        });
+        return;
+      }
+
       const novoAluno: Aluno = {
         id: generateId(),
         nome_completo: lead.nome,
@@ -120,6 +148,7 @@ export default function LeadsPage() {
       };
 
       await create(STORES.ALUNOS, novoAluno);
+      await reloadAlunos();
       await update(STORES.LEADS, {
         ...lead,
         status_lead: "CONVERTIDO",
@@ -133,7 +162,7 @@ export default function LeadsPage() {
     } catch (e: any) {
       toast({ title: "Erro na conversão", description: e.message, variant: "destructive" });
     }
-  }, [reload, toast]);
+  }, [alunos, reload, reloadAlunos, toast]);
 
   const openWhatsApp = useCallback((lead: Lead) => {
     const clean = (lead.telefone || "").replace(/\D/g, "");

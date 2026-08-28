@@ -1,4 +1,4 @@
-﻿import { forwardRef } from "react";
+import { forwardRef } from "react";
 import { Input } from "@/components/ui/input";
 import { maskCPF, validateCPF, stripCPF } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -44,7 +44,7 @@ const CpfInput = forwardRef<HTMLInputElement, CpfInputProps>(
             "absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium",
             isValid ? "text-success" : "text-destructive"
           )}>
-            {isValid ? "valido" : "invalido"}
+            {isValid ? "Válido" : "Inválido"}
           </span>
         )}
       </div>
