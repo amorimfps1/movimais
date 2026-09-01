@@ -34,7 +34,7 @@ export default function PresencasPage() {
   const { data: matriculas } = useTable<Matricula>(STORES.MATRICULAS);
   const { data: instrutores } = useTable<Instrutor>(STORES.INSTRUTORES);
   const { data: modalidades } = useTable<Modalidade>(STORES.MODALIDADES);
-  const { data: aulas, reload: reloadAulas } = useTable<Aula>(STORES.AULAS);
+  const { data: aulas, loading, reload: reloadAulas, page, totalPages, nextPage, prevPage, hasNextPage, hasPrevPage, setPage } = useTable<Aula>(STORES.AULAS, { paginated: true, pageSize: 50 });
 
   // Identifica o instrutor logado caso seja perfil instrutor
   const currentInstrutor = useMemo(() => {
@@ -767,6 +767,11 @@ export default function PresencasPage() {
           )}
         </div>
       )}
-    </div>
+    <div className="flex justify-center items-center gap-4 mt-4">
+  <Button onClick={prevPage} disabled={!hasPrevPage}>Prev</Button>
+  <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
+  <Button onClick={nextPage} disabled={!hasNextPage}>Next</Button>
+</div>
+</div>
   );
 }

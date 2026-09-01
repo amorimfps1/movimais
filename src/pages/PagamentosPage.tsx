@@ -22,7 +22,7 @@ const emptyPagamento = (): Pagamento => ({
 });
 
 export default function PagamentosPage() {
-  const { data: pagamentos, reload } = useTable<Pagamento>(STORES.PAGAMENTOS);
+  const { data: pagamentos, loading, reload, page, totalPages, nextPage, prevPage, hasNextPage, hasPrevPage, setPage } = useTable<Pagamento>(STORES.PAGAMENTOS, { paginated: true, pageSize: 50 });
   const { data: alunos } = useTable<Aluno>(STORES.ALUNOS);
   const { data: matriculas } = useTable<Matricula>(STORES.MATRICULAS);
   const { data: modalidades } = useTable<Modalidade>(STORES.MODALIDADES);
@@ -181,7 +181,7 @@ export default function PagamentosPage() {
 
       {/* Top Header */}
       <PageHeader
-        title="Financeiro e Pagamentos"
+        title="Pagamentos"
         description="Controle de mensalidades, taxas de matrícula, recebimentos e inadimplência"
         badge={`${pagamentos.length} Lançamentos`}
         action={
@@ -318,6 +318,11 @@ export default function PagamentosPage() {
         ]}
       />
 
+      <div className="flex justify-center items-center gap-4 mt-4">
+        <Button onClick={prevPage} disabled={!hasPrevPage}>Prev</Button>
+        <span className="text-sm text-muted-foreground">Page {page} of {totalPages}</span>
+        <Button onClick={nextPage} disabled={!hasNextPage}>Next</Button>
+      </div>
       {/* Modal de Detalhes do Pagamento */}
       <Dialog open={!!viewItem} onOpenChange={open => { if (!open) setViewItem(null); }}>
         <DialogContent className="max-w-md bg-card/95 backdrop-blur-2xl border-white/10 rounded-2xl p-6">

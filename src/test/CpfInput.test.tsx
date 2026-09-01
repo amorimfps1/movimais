@@ -28,16 +28,16 @@ describe('CpfInput', () => {
     render(<CpfInputWrapper />);
     const input = screen.getByPlaceholderText('000.000.000-00');
     fireEvent.change(input, { target: { value: '529.982.247-25' } });
-    expect(screen.getByText('valido')).toBeInTheDocument();
-    expect(screen.getByText('valido')).toHaveClass('text-success');
+    expect(screen.getByText(/válido/i)).toBeInTheDocument();
+    expect(screen.getByText(/válido/i)).toHaveClass('text-success');
   });
 
   it('Displays "invalido" when given an invalid complete CPF value', () => {
     render(<CpfInputWrapper />);
     const input = screen.getByPlaceholderText('000.000.000-00');
     fireEvent.change(input, { target: { value: '111.111.111-11' } });
-    expect(screen.getByText('invalido')).toBeInTheDocument();
-    expect(screen.getByText('invalido')).toHaveClass('text-destructive');
+    expect(screen.getByText(/inválido/i)).toBeInTheDocument();
+    expect(screen.getByText(/inválido/i)).toHaveClass('text-destructive');
   });
 
   it('Does not show validation indicator for incomplete CPF', () => {
