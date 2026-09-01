@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -17,13 +17,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { STORES, type Pagamento, type Matricula, type Modalidade, type Turma, type Instrutor, type Aluno } from "@/lib/store";
 import { useTable } from "@/hooks/useTable";
 import { formatDateToBR } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import {
   ModalidadeRevenueSchema,
   ProfessorRepasseSchema,
   ModalidadeMatriculasSchema,
   type ModalidadeRevenue,
   type ProfessorRepasse,
-  type ModalidadeMatriculas
+  type ModalidadeMatriculas,
+  type KpiFinancialSummary,
+  type EvolucaoFinanceiraMensal
 } from "@/types/financeiro";
 
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -220,32 +223,40 @@ export default function FinanceiroPage() {
     return null;
   }, [resolveModalidadeId, turmasMap, instrutoresMap, turmas, instrutores, modalidadesMap]);
 
-  // Âncora de data mais recente com dados (evita zerar quando o mês atual não tem lançamentos)
-  const refDateReceita = useMemo(() => {
+  // Identifica a data de referência para filtragem (mês atual ou mês mais recente com lançamentos)
+  const { filtroAnoRef, filtroMesRef } = useMemo(() => {
     const now = new Date();
-    let maxAno = 0;
-    let maxMes = 0;
-    let temAnoAtual = false;
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    let maxAno = currentYear;
+    let maxMes = currentMonth;
+    let hasCurrentMonthData = false;
+    let maxFoundDate = new Date(0);
 
     pagamentos.forEach(p => {
       const { mes, ano, isPago } = parsePayment(p);
       if (isPago && ano && mes) {
-        if (ano === now.getFullYear()) temAnoAtual = true;
-        if (ano > maxAno || (ano === maxAno && mes > maxMes)) {
+        if (ano === currentYear && mes === currentMonth) {
+          hasCurrentMonthData = true;
+        }
+        const d = new Date(ano, mes - 1, 1);
+        if (d > maxFoundDate) {
+          maxFoundDate = d;
           maxAno = ano;
           maxMes = mes;
         }
       }
     });
 
-    if (temAnoAtual || maxAno === 0) return now;
-    return new Date(maxAno, maxMes - 1, 1);
+    if (hasCurrentMonthData || pagamentos.length === 0) {
+      return { filtroAnoRef: currentYear, filtroMesRef: currentMonth };
+    }
+
+    return { filtroAnoRef: maxAno, filtroMesRef: maxMes };
   }, [pagamentos, parsePayment]);
 
-  const filtroAnoRef = refDateReceita.getFullYear();
-  const filtroMesRef = refDateReceita.getMonth() + 1;
-
-  // Filtragem de pagamentos por período
+  // Filtragem de pagamentos por período selecionado
   const pagamentosFiltrados = useMemo(() => {
     return pagamentos.filter(p => {
       const info = parsePayment(p);
@@ -265,7 +276,7 @@ export default function FinanceiroPage() {
       if (periodoFiltro === "ano") {
         return info.ano === filtroAnoRef;
       }
-      return true; // geral
+      return true; // "geral" (todo o histórico)
     });
   }, [pagamentos, periodoFiltro, filtroAnoRef, filtroMesRef, parsePayment]);
 
@@ -496,10 +507,10 @@ export default function FinanceiroPage() {
   }, [modalidades, matriculas, turmasMap, modalidadesMap]);
 
   // ==========================================
-  // RESUMO DE KPIS NO TOPO (Consolidado do Período e Mês)
+  // RESUMO DE KPIS NO TOPO (Consolidado do Período e Histórico)
   // ==========================================
   const kpis = useMemo(() => {
-    // Pagamentos filtrados no período selecionado
+    // 1. Pagamentos filtrados no período selecionado
     const receitaPeriodo = pagamentosFiltrados.reduce((sum, p) => sum + parsePayment(p).valor, 0);
 
     const repasseProfessoresPeriodo = pagamentosFiltrados
@@ -507,10 +518,10 @@ export default function FinanceiroPage() {
       .reduce((sum, p) => sum + parsePayment(p).valor, 0);
 
     const taxasMatriculaPeriodo = pagamentosFiltrados
-      .filter(p => parsePayment(p).isTaxaMatricula)
+      .filter(p => parsePayment(p).isTaxaMatricula || !parsePayment(p).isMensalidade)
       .reduce((sum, p) => sum + parsePayment(p).valor, 0);
 
-    // Total acumulado geral (todo o histórico pago)
+    // 2. Total acumulado geral (todo o histórico pago da escola)
     const receitaTotalAcumulada = pagamentos
       .filter(p => parsePayment(p).isPago)
       .reduce((sum, p) => sum + parsePayment(p).valor, 0);
@@ -522,7 +533,7 @@ export default function FinanceiroPage() {
       })
       .reduce((sum, p) => sum + parsePayment(p).valor, 0);
 
-    // Mensalidade prevista contratada de todas as matrículas ativas
+    // 3. Mensalidade prevista contratada de todas as matrículas ativas (MRR)
     const receitaPrevistaMatriculasAtivas = matriculas
       .filter(m => m.status_matricula === "ATIVA")
       .reduce((sum, m) => sum + (Number(m.valor_final) || 0), 0);
@@ -536,16 +547,15 @@ export default function FinanceiroPage() {
     const matriculasAtivasTotal = matriculas.filter(m => m.status_matricula === "ATIVA").length;
 
     return {
-      receitaPeriodo: receitaPeriodo > 0 ? receitaPeriodo : receitaPrevistaMatriculasAtivas,
-      repasseProfessoresPeriodo: repasseProfessoresPeriodo > 0 ? repasseProfessoresPeriodo : (receitaPrevistaMatriculasAtivas > 0 ? receitaPrevistaMatriculasAtivas : 0),
+      receitaPeriodo,
+      repasseProfessoresPeriodo,
       taxasMatriculaPeriodo,
-      receitaTotalAcumulada: receitaTotalAcumulada > 0 ? receitaTotalAcumulada : receitaPrevistaMatriculasAtivas,
-      totalRepasseAcumulado: totalRepasseAcumulado > 0 ? totalRepasseAcumulado : receitaPrevistaMatriculasAtivas,
+      receitaTotalAcumulada,
+      totalRepasseAcumulado,
       pagamentosLiquidadosCount,
       pagamentosPendentesCount,
       matriculasAtivasTotal,
       receitaPrevistaMatriculasAtivas,
-      isEstimativa: receitaPeriodo === 0 && receitaPrevistaMatriculasAtivas > 0,
     };
   }, [pagamentosFiltrados, pagamentos, matriculas, parsePayment]);
 
@@ -601,6 +611,8 @@ export default function FinanceiroPage() {
 
   const isLoading = loadingPag || loadingMat || loadingMod || loadingTur || loadingInst;
 
+  const isMesAtual = periodoFiltro === "mes_atual";
+
   if (isLoading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3">
@@ -648,10 +660,10 @@ export default function FinanceiroPage() {
 
         <div className="flex items-center gap-1.5 flex-wrap">
           {[
-            { key: "mes_atual", label: `Mês Atual (${MESES[mesAtual - 1]}/${anoAtual})` },
+            { key: "mes_atual", label: `Mês Atual (${MESES[filtroMesRef - 1]}/${filtroAnoRef})` },
             { key: "3m", label: "Últimos 3 Meses" },
             { key: "6m", label: "Últimos 6 Meses" },
-            { key: "ano", label: `Ano ${anoAtual}` },
+            { key: "ano", label: `Ano ${filtroAnoRef}` },
             { key: "geral", label: "Todo o Histórico" },
           ].map(f => (
             <button
@@ -672,16 +684,16 @@ export default function FinanceiroPage() {
       {/* Grid de KPIs Principais (Resumo no Topo) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Receita do Mês Atual"
+          title={isMesAtual ? "Receita do Mês Atual" : (periodoFiltro === "geral" ? "Receita Total Arrecadada" : "Receita do Período")}
           value={`R$ ${kpis.receitaPeriodo.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={DollarSign}
           variant="success"
-          trend={kpis.isEstimativa ? "Estimativa mensal (matrículas ativas)" : `${kpis.pagamentosLiquidadosCount} pagamentos confirmados`}
+          trend={`${kpis.pagamentosLiquidadosCount} ${kpis.pagamentosLiquidadosCount === 1 ? 'pagamento liquidado' : 'pagamentos liquidados'}`}
           trendType="positive"
         />
 
         <StatCard
-          title="Repasse a Professores (Mês)"
+          title={isMesAtual ? "Repasse a Professores (Mês)" : "Repasse a Professores"}
           value={`R$ ${kpis.repasseProfessoresPeriodo.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={Users}
           variant="primary"
@@ -699,7 +711,7 @@ export default function FinanceiroPage() {
         />
 
         <StatCard
-          title="Taxas de Matrícula (Mês)"
+          title={isMesAtual ? "Taxas & Retenções (Mês)" : "Taxas & Retenções"}
           value={`R$ ${kpis.taxasMatriculaPeriodo.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={Sparkles}
           variant="purple"
@@ -736,6 +748,13 @@ export default function FinanceiroPage() {
             <span className="text-[10px] uppercase text-muted-foreground block font-semibold">Repasse Total</span>
             <span className="font-bold text-emerald-400 text-sm">
               R$ {kpis.totalRepasseAcumulado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+            </span>
+          </div>
+          <div className="h-6 w-px bg-white/10" />
+          <div>
+            <span className="text-[10px] uppercase text-muted-foreground block font-semibold">Retenção MCJB</span>
+            <span className="font-bold text-purple-400 text-sm">
+              R$ {(kpis.receitaTotalAcumulada - kpis.totalRepasseAcumulado).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </span>
           </div>
         </div>

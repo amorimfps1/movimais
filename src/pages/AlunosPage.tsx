@@ -89,11 +89,29 @@ export default function AlunosPage() {
       return;
     }
     try {
+      const payload: Aluno = {
+        ...form,
+        nome_completo: form.nome_completo.trim(),
+        cpf: cleanCpf,
+        data_nascimento: form.data_nascimento || null as any,
+        email: form.email?.trim() || null as any,
+        telefone: form.telefone?.trim() || null as any,
+        endereco: form.endereco?.trim() || null as any,
+        bairro: form.bairro?.trim() || null as any,
+        cep: form.cep?.trim() || null as any,
+        nome_responsavel: form.nome_responsavel?.trim() || null as any,
+        cpf_responsavel: form.cpf_responsavel?.trim() ? stripCPF(form.cpf_responsavel) : null as any,
+        telefone_responsavel: form.telefone_responsavel?.trim() || null as any,
+        email_responsavel: form.email_responsavel?.trim() || null as any,
+        origem_primeiro_contato: form.origem_primeiro_contato || null as any,
+        observacoes_medicas: form.observacoes_medicas?.trim() || null as any,
+      };
+
       if (editingItem) {
-        await update(STORES.ALUNOS, form);
+        await update(STORES.ALUNOS, payload);
         toast({ title: "Aluno atualizado com sucesso!" });
       } else {
-        await create(STORES.ALUNOS, form);
+        await create(STORES.ALUNOS, payload);
         toast({ title: "Aluno cadastrado com sucesso!" });
       }
       await reload();

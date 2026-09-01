@@ -20,8 +20,8 @@ vi.mock('@/hooks/useAuth', () => ({
 }));
 
 const mockTurmas = [
-  { id: 'TURMA1', nome_turma: 'Turma do Prof Silva', id_instrutor: 'INST1', status_turma: 'ATIVA', dias_semana: ['Quinta'], horario_inicio: '08:00', horario_fim: '09:00' },
-  { id: 'TURMA2', nome_turma: 'Turma de Outro Prof', id_instrutor: 'INST2', status_turma: 'ATIVA', dias_semana: ['Quinta'], horario_inicio: '10:00', horario_fim: '11:00' },
+  { id: 'TURMA1', nome_turma: 'Turma do Prof Silva', id_instrutor: 'INST1', status_turma: 'ATIVA', dias_semana: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'], horario_inicio: '08:00', horario_fim: '09:00' },
+  { id: 'TURMA2', nome_turma: 'Turma de Outro Prof', id_instrutor: 'INST2', status_turma: 'ATIVA', dias_semana: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'], horario_inicio: '10:00', horario_fim: '11:00' },
 ];
 
 const mockInstrutores = [

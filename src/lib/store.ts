@@ -153,12 +153,15 @@ export function generateId() {
 
 // ============ Generic CRUD (async) ============
 export async function getAll<T>(table: string): Promise<T[]> {
-  const { data, error } = await supabase.from(table as any).select("*").order("created_at", { ascending: false });
+  const { data, error } = await supabase
+    .from(table as any)
+    .select("*")
+    .order("created_at", { ascending: false });
   if (error) {
     console.error(`[getAll ${table}]`, error);
     return [];
   }
-  return (data as T[]) || [];
+  return ((data as any[]) || []).filter(item => !item?.deleted_at) as T[];
 }
 
 export async function getById<T>(table: string, id: string): Promise<T | undefined> {
@@ -188,9 +191,17 @@ export async function update<T extends { id: string }>(table: string, item: T): 
 }
 
 export async function remove(table: string, id: string): Promise<void> {
-  const { error } = await supabase.from(table as any).delete().eq("id", id);
+  const { error } = await supabase
+    .from(table as any)
+    .update({ deleted_at: new Date().toISOString() } as any)
+    .eq("id", id);
+
   if (error) {
-    console.error(`[remove ${table}]`, error);
-    throw error;
+    // Fallback para delete físico caso a tabela ou schema rejeite
+    const { error: delErr } = await supabase.from(table as any).delete().eq("id", id);
+    if (delErr) {
+      console.error(`[remove ${table}]`, delErr);
+      throw delErr;
+    }
   }
 }

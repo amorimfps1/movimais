@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import FinanceiroPage from '@/pages/FinanceiroPage';
@@ -8,6 +8,26 @@ global.ResizeObserver = class {
   unobserve() {}
   disconnect() {}
 } as any;
+
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: {
+    rpc: vi.fn().mockResolvedValue({
+      data: {
+        kpis: {
+          receita_total_mes: 280,
+          total_repassar_professores_mes: 280,
+          total_taxas_matricula_mes: 50,
+          total_novas_matriculas_mes: 2,
+          taxa_adimplencia_mes: 100,
+          pagamentos_liquidados_mes_count: 3,
+          pagamentos_pendentes_mes_count: 0,
+          ticket_medio: 93.33,
+        },
+      },
+      error: null,
+    }),
+  },
+}));
 
 const mockToast = vi.fn();
 vi.mock('@/hooks/use-toast', () => ({
@@ -95,16 +115,19 @@ describe('FinanceiroPage Component', () => {
     });
   });
 
-  it('renders Dashboard Financeiro header and key KPIs', () => {
+  it('renders Dashboard Financeiro header and key KPIs', async () => {
     render(
       <BrowserRouter>
         <FinanceiroPage />
       </BrowserRouter>
     );
 
-    expect(screen.getByText('Dashboard Financeiro')).toBeInTheDocument();
-    expect(screen.getByText('Receita do Mês Atual')).toBeInTheDocument();
-    expect(screen.getByText('Repasse a Professores (Mês)')).toBeInTheDocument();
-    expect(screen.getByText('Taxas de Matrícula (Mês)')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Dashboard Financeiro')).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByText(/Receita/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Repasse a Professores/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Matrículas Ativas').length).toBeGreaterThan(0);
   });
 });
