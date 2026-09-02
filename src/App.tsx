@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, ComponentType } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Loader2 } from "lucide-react";
@@ -9,20 +9,42 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 
-const Dashboard = lazy(() => import("@/pages/Dashboard"));
-const AlunosPage = lazy(() => import("@/pages/AlunosPage"));
-const LeadsPage = lazy(() => import("@/pages/LeadsPage"));
-const MatriculasPage = lazy(() => import("@/pages/MatriculasPage"));
-const TurmasPage = lazy(() => import("@/pages/TurmasPage"));
-const ModalidadesPage = lazy(() => import("@/pages/ModalidadesPage"));
-const InstrutoresPage = lazy(() => import("@/pages/InstrutoresPage"));
-const PagamentosPage = lazy(() => import("@/pages/PagamentosPage"));
-const FinanceiroPage = lazy(() => import("@/pages/FinanceiroPage"));
-const PresencasPage = lazy(() => import("@/pages/PresencasPage"));
-const AulasPage = lazy(() => import("@/pages/AulasPage"));
-const AuthPage = lazy(() => import("@/pages/AuthPage"));
-const UsuariosPage = lazy(() => import("@/pages/UsuariosPage"));
-const NotFound = lazy(() => import("@/pages/NotFound"));
+// Função utilitária com auto-recarga e resiliência a falhas de importação de chunks dinâmicos do Vite
+function lazyWithRetry<T extends ComponentType<any>>(
+  factory: () => Promise<{ default: T }>
+) {
+  return lazy(async () => {
+    const isRefreshed = sessionStorage.getItem("vite_chunk_refreshed") === "true";
+    try {
+      const component = await factory();
+      sessionStorage.removeItem("vite_chunk_refreshed");
+      return component;
+    } catch (error: any) {
+      console.warn("Falha ao carregar módulo dinâmico. Tentando recarregar:", error);
+      if (!isRefreshed) {
+        sessionStorage.setItem("vite_chunk_refreshed", "true");
+        window.location.reload();
+        return new Promise<{ default: T }>(() => {});
+      }
+      throw error;
+    }
+  });
+}
+
+const Dashboard = lazyWithRetry(() => import("@/pages/Dashboard"));
+const AlunosPage = lazyWithRetry(() => import("@/pages/AlunosPage"));
+const LeadsPage = lazyWithRetry(() => import("@/pages/LeadsPage"));
+const MatriculasPage = lazyWithRetry(() => import("@/pages/MatriculasPage"));
+const TurmasPage = lazyWithRetry(() => import("@/pages/TurmasPage"));
+const ModalidadesPage = lazyWithRetry(() => import("@/pages/ModalidadesPage"));
+const InstrutoresPage = lazyWithRetry(() => import("@/pages/InstrutoresPage"));
+const PagamentosPage = lazyWithRetry(() => import("@/pages/PagamentosPage"));
+const FinanceiroPage = lazyWithRetry(() => import("@/pages/FinanceiroPage"));
+const PresencasPage = lazyWithRetry(() => import("@/pages/PresencasPage"));
+const AulasPage = lazyWithRetry(() => import("@/pages/AulasPage"));
+const AuthPage = lazyWithRetry(() => import("@/pages/AuthPage"));
+const UsuariosPage = lazyWithRetry(() => import("@/pages/UsuariosPage"));
+const NotFound = lazyWithRetry(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient({
   defaultOptions: {

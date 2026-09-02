@@ -5,18 +5,18 @@ import {
   PieChart, Pie, Cell, Legend
 } from "recharts";
 import {
-  DollarSign, GraduationCap, TrendingUp, Users, AlertCircle,
-  Download, ArrowUpRight, ShieldCheck, CreditCard, Sparkles,
-  PieChart as PieChartIcon, BarChart3, Receipt, Wallet,
-  Calendar, Layers, Filter, Loader2
+  DollarSign, GraduationCap, Users,
+  Download, CreditCard, Sparkles,
+  PieChart as PieChartIcon, BarChart3, Wallet,
+  Calendar, Filter, Loader2
 } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import PageHeader from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { STORES, type Pagamento, type Matricula, type Modalidade, type Turma, type Instrutor, type Aluno } from "@/lib/store";
+import { Input } from "@/components/ui/input";
+import { STORES, type Pagamento, type Matricula, type Modalidade, type Turma, type Instrutor } from "@/lib/store";
 import { useTable } from "@/hooks/useTable";
-import { formatDateToBR } from "@/lib/utils";
+import { maskDate, parseBRDateToISO } from "@/lib/utils";
 import {
   ModalidadeRevenueSchema,
   ProfessorRepasseSchema,
@@ -32,14 +32,12 @@ const COLORS = {
   primary: "hsl(0, 65%, 48%)",
   emerald: "#10b981",
   amber: "#f59e0b",
-  rose: "#f43f5e",
   sky: "#0ea5e9",
   purple: "#8b5cf6",
   indigo: "#6366f1",
   teal: "#14b8a6",
   pink: "#ec4899",
   orange: "#f97316",
-  muted: "#71717a",
 };
 
 const PALETTE = [
@@ -89,12 +87,13 @@ export default function FinanceiroPage() {
   const { data: modalidades, loading: loadingMod } = useTable<Modalidade>(STORES.MODALIDADES);
   const { data: turmas, loading: loadingTur } = useTable<Turma>(STORES.TURMAS);
   const { data: instrutores, loading: loadingInst } = useTable<Instrutor>(STORES.INSTRUTORES);
-  const { data: alunos } = useTable<Aluno>(STORES.ALUNOS);
+
 
   // Estados de filtro
-  const [periodoFiltro, setPeriodoFiltro] = useState<"mes_atual" | "3m" | "6m" | "ano" | "geral">("geral");
-  const [modalidadeFiltro, setModalidadeFiltro] = useState<string>("todas");
-  const [activeTab, setActiveTab] = useState<"modalidades" | "professores" | "evolucao">("modalidades");
+  const [periodoFiltro, setPeriodoFiltro] = useState<"mes_atual" | "3m" | "6m" | "12m" | "personalizado" >("mes_atual");
+  const [dataInicio, setDataInicio] = useState<string>("");
+  const [dataFim, setDataFim] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<"modalidades" | "professores">("modalidades");
 
   const currentDate = useMemo(() => new Date(), []);
   const anoAtual = currentDate.getFullYear();
@@ -110,16 +109,22 @@ export default function FinanceiroPage() {
   const parsePayment = useCallback((p: Pagamento) => {
     let mes = p.mes_referencia != null ? Number(p.mes_referencia) : NaN;
     let ano = p.ano_referencia != null ? Number(p.ano_referencia) : NaN;
+    let dateISO = "";
 
-    if (isNaN(mes) || isNaN(ano) || mes < 1 || mes > 12) {
-      const dateStr = p.data_pagamento || p.data_vencimento || (p as any).created_at;
-      if (dateStr) {
-        const parts = String(dateStr).split("T")[0].split("-");
-        if (parts.length >= 2) {
-          if (isNaN(ano)) ano = parseInt(parts[0], 10);
-          if (isNaN(mes)) mes = parseInt(parts[1], 10);
-        }
+    // Tenta extrair data válida a partir dos campos disponíveis
+    const rawDateStr = p.data_pagamento || p.data_vencimento || (p as any).created_at;
+    if (rawDateStr) {
+      dateISO = String(rawDateStr).split("T")[0];
+      const parts = dateISO.split("-");
+      if (parts.length >= 2) {
+        if (isNaN(ano)) ano = parseInt(parts[0], 10);
+        if (isNaN(mes)) mes = parseInt(parts[1], 10);
       }
+    }
+
+    // Se ainda não tiver dateISO mas tiver ano e mês válidos
+    if (!dateISO && !isNaN(ano) && !isNaN(mes) && mes >= 1 && mes <= 12) {
+      dateISO = `${ano}-${String(mes).padStart(2, "0")}-01`;
     }
 
     const rawStatus = String(p.status_pagamento || "").trim().toUpperCase();
@@ -138,6 +143,7 @@ export default function FinanceiroPage() {
     return {
       mes,
       ano,
+      dateISO,
       status: rawStatus,
       tipo: rawTipo,
       isPago,
@@ -220,54 +226,73 @@ export default function FinanceiroPage() {
     return null;
   }, [resolveModalidadeId, turmasMap, instrutoresMap, turmas, instrutores, modalidadesMap]);
 
-  // Âncora de data mais recente com dados (evita zerar quando o mês atual não tem lançamentos)
-  const refDateReceita = useMemo(() => {
-    const now = new Date();
-    let maxAno = 0;
-    let maxMes = 0;
-    let temAnoAtual = false;
-
-    pagamentos.forEach(p => {
-      const { mes, ano, isPago } = parsePayment(p);
-      if (isPago && ano && mes) {
-        if (ano === now.getFullYear()) temAnoAtual = true;
-        if (ano > maxAno || (ano === maxAno && mes > maxMes)) {
-          maxAno = ano;
-          maxMes = mes;
-        }
-      }
-    });
-
-    if (temAnoAtual || maxAno === 0) return now;
-    return new Date(maxAno, maxMes - 1, 1);
-  }, [pagamentos, parsePayment]);
-
-  const filtroAnoRef = refDateReceita.getFullYear();
-  const filtroMesRef = refDateReceita.getMonth() + 1;
-
   // Filtragem de pagamentos por período
   const pagamentosFiltrados = useMemo(() => {
     return pagamentos.filter(p => {
       const info = parsePayment(p);
       if (!info.isPago) return false;
 
+      // Filtro Mês Atual (competência ou pagamento no mês corrente)
       if (periodoFiltro === "mes_atual") {
-        return info.ano === filtroAnoRef && info.mes === filtroMesRef;
+        return info.ano === anoAtual && info.mes === mesAtual;
       }
+
+      // Filtro Últimos 3 Meses (janela móvel de 3 meses até o mês atual)
       if (periodoFiltro === "3m") {
-        const diffMeses = (filtroAnoRef - info.ano) * 12 + (filtroMesRef - info.mes);
+        if (isNaN(info.ano) || isNaN(info.mes)) return false;
+        const diffMeses = (anoAtual - info.ano) * 12 + (mesAtual - info.mes);
         return diffMeses >= 0 && diffMeses < 3;
       }
+
+      // Filtro Últimos 6 Meses (janela móvel de 6 meses até o mês atual)
       if (periodoFiltro === "6m") {
-        const diffMeses = (filtroAnoRef - info.ano) * 12 + (filtroMesRef - info.mes);
+        if (isNaN(info.ano) || isNaN(info.mes)) return false;
+        const diffMeses = (anoAtual - info.ano) * 12 + (mesAtual - info.mes);
         return diffMeses >= 0 && diffMeses < 6;
       }
-      if (periodoFiltro === "ano") {
-        return info.ano === filtroAnoRef;
+
+      // Filtro Último Ano (12 meses móveis até o mês atual)
+      if (periodoFiltro === "12m") {
+        if (isNaN(info.ano) || isNaN(info.mes)) return false;
+        const diffMeses = (anoAtual - info.ano) * 12 + (mesAtual - info.mes);
+        return diffMeses >= 0 && diffMeses < 12;
       }
+
+      // Filtro Personalizado (intervalo de datas customizado DD/MM/YYYY)
+      if (periodoFiltro === "personalizado") {
+        if (!info.dateISO) return false;
+        const isoInicio = parseBRDateToISO(dataInicio);
+        const isoFim = parseBRDateToISO(dataFim);
+        if (isoInicio && info.dateISO < isoInicio) return false;
+        if (isoFim && info.dateISO > isoFim) return false;
+        return true;
+      }
+
+      // Todo o histórico
       return true; // geral
     });
-  }, [pagamentos, periodoFiltro, filtroAnoRef, filtroMesRef, parsePayment]);
+  }, [pagamentos, periodoFiltro, anoAtual, mesAtual, dataInicio, dataFim, parsePayment]);
+
+  // Rótulo textual do período selecionado
+  const periodoLabel = useMemo(() => {
+    switch (periodoFiltro) {
+      case "mes_atual":
+        return `Mês Atual (${MESES[mesAtual - 1]}/${anoAtual})`;
+      case "3m":
+        return "Últimos 3 Meses";
+      case "6m":
+        return "Últimos 6 Meses";
+      case "12m":
+        return "Último Ano (12M)";
+      case "personalizado":
+        return dataInicio || dataFim
+          ? `Personalizado (${dataInicio || "Início"} a ${dataFim || "Hoje"})`
+          : "Personalizado (Intervalo Livre)";
+      case "geral":
+      default:
+        return "Todo o Histórico";
+    }
+  }, [periodoFiltro, mesAtual, anoAtual, dataInicio, dataFim]);
 
   // ==========================================
   // REGRA 1: ARRECADAÇÃO POR MODALIDADE (Total)
@@ -499,7 +524,7 @@ export default function FinanceiroPage() {
   // RESUMO DE KPIS NO TOPO (Consolidado do Período e Mês)
   // ==========================================
   const kpis = useMemo(() => {
-    // Pagamentos filtrados no período selecionado
+    // Pagamentos filtrados no período selecionado (estritamente pagos e liquidados)
     const receitaPeriodo = pagamentosFiltrados.reduce((sum, p) => sum + parsePayment(p).valor, 0);
 
     const repasseProfessoresPeriodo = pagamentosFiltrados
@@ -510,44 +535,73 @@ export default function FinanceiroPage() {
       .filter(p => parsePayment(p).isTaxaMatricula)
       .reduce((sum, p) => sum + parsePayment(p).valor, 0);
 
-    // Total acumulado geral (todo o histórico pago)
-    const receitaTotalAcumulada = pagamentos
-      .filter(p => parsePayment(p).isPago)
-      .reduce((sum, p) => sum + parsePayment(p).valor, 0);
-
-    const totalRepasseAcumulado = pagamentos
+    const outrosValoresPeriodo = pagamentosFiltrados
       .filter(p => {
         const info = parsePayment(p);
-        return info.isPago && info.isMensalidade;
+        return !info.isMensalidade && !info.isTaxaMatricula;
       })
       .reduce((sum, p) => sum + parsePayment(p).valor, 0);
 
-    // Mensalidade prevista contratada de todas as matrículas ativas
-    const receitaPrevistaMatriculasAtivas = matriculas
+
+    // Mensalidade base contratada de todas as matrículas ativas (1 mês)
+    const receitaPrevistaMensalBase = matriculas
       .filter(m => m.status_matricula === "ATIVA")
       .reduce((sum, m) => sum + (Number(m.valor_final) || 0), 0);
 
+    // Cálculo proporcional da previsão conforme o período selecionado
+    let fatorMesesPrevisao = 1;
+    let labelPrevisaoPeriodo = "Previsão (Mês Atual)";
+    let trendPrevisaoPeriodo = "Base: 1 mês de contratos ativos";
+
+    if (periodoFiltro === "3m") {
+      fatorMesesPrevisao = 3;
+      labelPrevisaoPeriodo = "Previsão (3 Meses)";
+      trendPrevisaoPeriodo = "Projeção de 3 meses contratados";
+    } else if (periodoFiltro === "6m") {
+      fatorMesesPrevisao = 6;
+      labelPrevisaoPeriodo = "Previsão (6 Meses)";
+      trendPrevisaoPeriodo = "Projeção de 6 meses contratados";
+    } else if (periodoFiltro === "12m") {
+      fatorMesesPrevisao = 12;
+      labelPrevisaoPeriodo = "Previsão (12 Meses)";
+      trendPrevisaoPeriodo = "Projeção anual de contratos ativos";
+    } else if (periodoFiltro === "personalizado") {
+      const isoInicio = parseBRDateToISO(dataInicio);
+      const isoFim = parseBRDateToISO(dataFim);
+      if (isoInicio && isoFim) {
+        const d1 = new Date(isoInicio);
+        const d2 = new Date(isoFim);
+        const diffDays = Math.max(1, Math.round(Math.abs(d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+        fatorMesesPrevisao = diffDays / 30.4375;
+        labelPrevisaoPeriodo = `Previsão (${diffDays} dias)`;
+        trendPrevisaoPeriodo = `Projeção proporcional (~${fatorMesesPrevisao.toFixed(1)} meses)`;
+      } else {
+        fatorMesesPrevisao = 1;
+        labelPrevisaoPeriodo = "Previsão (Personalizado)";
+        trendPrevisaoPeriodo = "Base mensal de contratos ativos";
+      }
+    } 
+
+    const receitaPrevistaPeriodo = Number((receitaPrevistaMensalBase * fatorMesesPrevisao).toFixed(2));
+
     const pagamentosLiquidadosCount = pagamentosFiltrados.length;
-    const pagamentosPendentesCount = pagamentos.filter(p => {
-      const st = parsePayment(p).status;
-      return st === "PENDENTE" || st === "ATRASADO" || st === "PREVISTO";
-    }).length;
+    const mensalidadesPagasCount = pagamentosFiltrados.filter(p => parsePayment(p).isMensalidade).length;
 
     const matriculasAtivasTotal = matriculas.filter(m => m.status_matricula === "ATIVA").length;
 
     return {
-      receitaPeriodo: receitaPeriodo > 0 ? receitaPeriodo : receitaPrevistaMatriculasAtivas,
-      repasseProfessoresPeriodo: repasseProfessoresPeriodo > 0 ? repasseProfessoresPeriodo : (receitaPrevistaMatriculasAtivas > 0 ? receitaPrevistaMatriculasAtivas : 0),
+      receitaPeriodo,
+      repasseProfessoresPeriodo,
       taxasMatriculaPeriodo,
-      receitaTotalAcumulada: receitaTotalAcumulada > 0 ? receitaTotalAcumulada : receitaPrevistaMatriculasAtivas,
-      totalRepasseAcumulado: totalRepasseAcumulado > 0 ? totalRepasseAcumulado : receitaPrevistaMatriculasAtivas,
+      outrosValoresPeriodo,
       pagamentosLiquidadosCount,
-      pagamentosPendentesCount,
+      mensalidadesPagasCount,
       matriculasAtivasTotal,
-      receitaPrevistaMatriculasAtivas,
-      isEstimativa: receitaPeriodo === 0 && receitaPrevistaMatriculasAtivas > 0,
+      receitaPrevistaPeriodo,
+      labelPrevisaoPeriodo,
+      trendPrevisaoPeriodo,
     };
-  }, [pagamentosFiltrados, pagamentos, matriculas, parsePayment]);
+  }, [pagamentosFiltrados, matriculas, periodoFiltro, dataInicio, dataFim, parsePayment]);
 
   // Gráfico de Receita por Modalidade (Top 8 para visualização limpa)
   const chartModalidadesReceita = useMemo(() => {
@@ -576,7 +630,7 @@ export default function FinanceiroPage() {
   // Exportação de Relatório CSV
   const handleExportCSV = useCallback(() => {
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "RELATORIO FINANCEIRO CONSOLIDADO - MOVI+\n\n";
+    csvContent += `RELATORIO FINANCEIRO CONSOLIDADO - MOVI+ (${periodoLabel.toUpperCase()})\n\n`;
 
     csvContent += "=== ARRECADACAO POR MODALIDADE ===\n";
     csvContent += "Modalidade,Area,Matriculas Ativas,Total Mensalidades (R$),Taxas Matricula (R$),Outros (R$),Receita Total (R$)\n";
@@ -593,11 +647,11 @@ export default function FinanceiroPage() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `dashboard_financeiro_movi_${new Date().toISOString().split("T")[0]}.csv`);
+    link.setAttribute("download", `dashboard_financeiro_movi_${periodoFiltro}_${new Date().toISOString().split("T")[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }, [arrecadacaoPorModalidade, repassePorProfessor]);
+  }, [arrecadacaoPorModalidade, repassePorProfessor, periodoLabel, periodoFiltro]);
 
   const isLoading = loadingPag || loadingMat || loadingMod || loadingTur || loadingInst;
 
@@ -640,105 +694,124 @@ export default function FinanceiroPage() {
       />
 
       {/* Barra de Filtros de Período */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-card/60 border border-white/10 backdrop-blur-xl">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Filter className="w-4 h-4 text-primary" />
-          <span className="font-medium text-foreground">Filtro de Período para Análise:</span>
+      <div className="space-y-3 p-4 rounded-2xl bg-card/60 border border-white/10 backdrop-blur-xl shadow-lg">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Filter className="w-4 h-4 text-primary" />
+            <span className="font-semibold text-foreground">Filtro de Período para Análise:</span>
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {[
+              { key: "mes_atual", label: `Mês Atual (${MESES[mesAtual - 1]}/${anoAtual})` },
+              { key: "3m", label: "Últimos 3 Meses" },
+              { key: "6m", label: "Últimos 6 Meses" },
+              { key: "12m", label: "Último Ano (12M)" },
+              { key: "geral", label: "Todo o Histórico" },
+              { key: "personalizado", label: "Personalizado" },
+            ].map(f => (
+              <button
+                key={f.key}
+                onClick={() => setPeriodoFiltro(f.key as any)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
+                  periodoFiltro === f.key
+                    ? "bg-primary text-white shadow-md shadow-primary/25 border border-primary/40 font-semibold"
+                    : "bg-white/5 text-zinc-300 hover:text-white hover:bg-white/10 border border-white/5"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-wrap">
-          {[
-            { key: "mes_atual", label: `Mês Atual (${MESES[mesAtual - 1]}/${anoAtual})` },
-            { key: "3m", label: "Últimos 3 Meses" },
-            { key: "6m", label: "Últimos 6 Meses" },
-            { key: "ano", label: `Ano ${anoAtual}` },
-            { key: "geral", label: "Todo o Histórico" },
-          ].map(f => (
-            <button
-              key={f.key}
-              onClick={() => setPeriodoFiltro(f.key as any)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
-                periodoFiltro === f.key
-                  ? "bg-primary text-white shadow-md shadow-primary/25 border border-primary/40 font-semibold"
-                  : "bg-white/5 text-zinc-300 hover:text-white hover:bg-white/10 border border-white/5"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
+        {/* Painel de Datas Personalizadas (quando o filtro selecionado for 'personalizado') */}
+        {periodoFiltro === "personalizado" && (
+          <div className="pt-3 border-t border-white/10 flex flex-wrap items-center gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-2 text-xs">
+              <Calendar className="w-4 h-4 text-primary shrink-0" />
+              <span className="text-muted-foreground">Intervalo personalizado (DD/MM/AAAA):</span>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap text-xs">
+              <div className="flex items-center gap-1.5">
+                <label htmlFor="dataInicio" className="text-muted-foreground text-[11px]">De:</label>
+                <Input
+                  id="dataInicio"
+                  type="text"
+                  placeholder="DD/MM/AAAA"
+                  value={dataInicio}
+                  onChange={e => setDataInicio(maskDate(e.target.value))}
+                  maxLength={10}
+                  className="h-8 w-32 text-xs bg-black/40 border-white/10 rounded-lg placeholder:text-zinc-600 font-mono text-center"
+                />
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <label htmlFor="dataFim" className="text-muted-foreground text-[11px]">Até:</label>
+                <Input
+                  id="dataFim"
+                  type="text"
+                  placeholder="DD/MM/AAAA"
+                  value={dataFim}
+                  onChange={e => setDataFim(maskDate(e.target.value))}
+                  maxLength={10}
+                  className="h-8 w-32 text-xs bg-black/40 border-white/10 rounded-lg placeholder:text-zinc-600 font-mono text-center"
+                />
+              </div>
+
+              {(dataInicio || dataFim) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setDataInicio(""); setDataFim(""); }}
+                  className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground rounded-lg"
+                >
+                  Limpar datas
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Grid de KPIs Principais (Resumo no Topo) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Receita do Mês Atual"
+          title={`Receita Liquidada (${periodoFiltro === "mes_atual" ? "Mês Atual" : periodoFiltro === "3m" ? "3 Meses" : periodoFiltro === "6m" ? "6 Meses" : periodoFiltro === "12m" ? "12 Meses" : periodoFiltro === "personalizado" ? "Personalizado" : "Histórico"})`}
           value={`R$ ${kpis.receitaPeriodo.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={DollarSign}
           variant="success"
-          trend={kpis.isEstimativa ? "Estimativa mensal (matrículas ativas)" : `${kpis.pagamentosLiquidadosCount} pagamentos confirmados`}
+          trend={`${kpis.pagamentosLiquidadosCount} pagamento(s) confirmado(s)`}
+          trendType={kpis.receitaPeriodo > 0 ? "positive" : "neutral"}
+        />
+
+        <StatCard
+          title={kpis.labelPrevisaoPeriodo}
+          value={`R$ ${kpis.receitaPrevistaPeriodo.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          icon={GraduationCap}
+          variant="info"
+          trend={`${kpis.trendPrevisaoPeriodo} • ${kpis.matriculasAtivasTotal} matrícula(s)`}
           trendType="positive"
         />
 
         <StatCard
-          title="Repasse a Professores (Mês)"
+          title="Base de Repasse a Professores"
           value={`R$ ${kpis.repasseProfessoresPeriodo.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={Users}
           variant="primary"
-          trend="Apenas mensalidades pagas"
+          trend={`${kpis.mensalidadesPagasCount} mensalidade(s) no período`}
           trendType="neutral"
         />
 
         <StatCard
-          title="Matrículas Ativas"
-          value={kpis.matriculasAtivasTotal}
-          icon={GraduationCap}
-          variant="info"
-          trend={`R$ ${kpis.receitaPrevistaMatriculasAtivas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} previsto/mês`}
-          trendType="positive"
-        />
-
-        <StatCard
-          title="Taxas de Matrícula (Mês)"
-          value={`R$ ${kpis.taxasMatriculaPeriodo.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          title="Taxas & Outras Receitas"
+          value={`R$ ${(kpis.taxasMatriculaPeriodo + kpis.outrosValoresPeriodo).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
           icon={Sparkles}
           variant="purple"
           trend="100% retido pela administração"
           trendType="neutral"
         />
-      </div>
-
-      {/* Banner Informativo sobre as Regras de Repasse */}
-      <div className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-card/70 to-card/90 p-4 sm:p-5 backdrop-blur-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg">
-        <div className="flex items-start gap-3.5">
-          <div className="p-2.5 rounded-xl bg-primary/20 border border-primary/30 text-primary shrink-0 mt-0.5">
-            <ShieldCheck className="w-5 h-5" />
-          </div>
-          <div className="space-y-1">
-            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              Regra de Negócio: Repasse de Professores vs. Receita do Movimento
-            </h4>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-              O montante atribuído a cada instrutor é calculado <strong className="text-foreground">exclusivamente a partir de pagamentos categorizados como &quot;Mensalidade&quot;</strong>. Taxas de matrícula, material didático e reposições são contabilizadas na receita total da escola e <strong className="text-foreground">não</strong> entram no repasse dos professores.
-            </p>
-          </div>
-        </div>
-
-        <div className="shrink-0 flex items-center gap-3 bg-white/5 border border-white/10 px-4 py-2.5 rounded-xl text-xs">
-          <div>
-            <span className="text-[10px] uppercase text-muted-foreground block font-semibold">Receita Acumulada</span>
-            <span className="font-bold text-foreground text-sm">
-              R$ {kpis.receitaTotalAcumulada.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-            </span>
-          </div>
-          <div className="h-6 w-px bg-white/10" />
-          <div>
-            <span className="text-[10px] uppercase text-muted-foreground block font-semibold">Repasse Total</span>
-            <span className="font-bold text-emerald-400 text-sm">
-              R$ {kpis.totalRepasseAcumulado.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-            </span>
-          </div>
-        </div>
       </div>
 
       {/* Seção de Gráficos — Linha 1 */}

@@ -43,6 +43,11 @@ export default class ErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
+      const isChunkError =
+        this.state.error?.message?.includes("Failed to fetch dynamically imported module") ||
+        this.state.error?.message?.includes("dynamically imported module") ||
+        this.state.error?.message?.includes("Importing a module script failed");
+
       return (
         <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-foreground">
           <div className="w-full max-w-md p-8 rounded-3xl border border-white/10 bg-card/80 backdrop-blur-2xl shadow-2xl text-center space-y-6 animate-in fade-in zoom-in-95 duration-300">
@@ -56,10 +61,12 @@ export default class ErrorBoundary extends Component<Props, State> {
 
             <div className="space-y-2">
               <h2 className="text-xl font-semibold tracking-tight text-foreground">
-                Ops! Ocorreu um erro
+                {isChunkError ? "Nova Versão Disponível" : "Ops! Ocorreu um erro"}
               </h2>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Houve uma falha inesperada ao renderizar a visualização. Tente recarregar a página ou retornar à tela inicial.
+                {isChunkError
+                  ? "Uma nova atualização do sistema foi carregada. Clique abaixo para atualizar o navegador e carregar as novas telas."
+                  : "Houve uma falha inesperada ao renderizar a visualização. Tente recarregar a página ou retornar à tela inicial."}
               </p>
               {this.state.error?.message && (
                 <div className="p-3 rounded-xl bg-black/40 border border-white/5 text-[11px] font-mono text-rose-300/90 text-left overflow-x-auto max-h-24">

@@ -1,101 +1,81 @@
 # CONTEXT.md — MOVI+ Contexto Técnico e de Negócio
 
-> Este arquivo serve como referência rápida para desenvolvedores e agentes de IA trabalhando neste repositório.
-> Descreve a arquitetura, padrões de código, regras de negócio, convenções e evolução do projeto.
+> Este arquivo serve como referência técnica e arquitetural consolidada para desenvolvedores e agentes de IA trabalhando neste repositório.
+> Descreve a arquitetura, regras de negócio, convenções de código, banco de dados, governança de acesso (RBAC) e evolução contínua do projeto.
 
 ---
 
-## 1. Visão Geral
+## 1. Visão Geral do Projeto
 
-**MOVI+** é uma aplicação web SPA (Single Page Application) moderna desenvolvida para o **Movimento Comunitário do Jardim Botânico (MCJB)**, uma instituição comunitária em Brasília-DF que oferece atividades esportivas, artísticas, culturais e de bem-estar.
+**MOVI+** é uma aplicação web SPA (Single Page Application) moderna desenvolvida sob medida para o **Movimento Comunitário do Jardim Botânico (MCJB)**, instituição comunitária em Brasília-DF que oferece atividades esportivas, artísticas, culturais e de bem-estar para cerca de 500 alunos.
 
-<<<<<<< HEAD
-O sistema centraliza a gestão operacional, pedagógica e financeira de:
-- **Alunos**: Cadastro completo de alunos, dados de contato, responsáveis para menores e observações médicas.
-- **Leads & Captação**: Funil de atendimento comercial e conversão direta de contatos em alunos em 1 clique.
-- **Matrículas & Planos**: Vínculo aluno ↔ modalidade ↔ turma, planos (Mensal, Trimestral, Anual), cálculo automático de vigência e liberação para aula.
-- **Turmas & Grade Horária**: Agrupamento por modalidade, faixa etária, dias da semana, horários, salas e atribuição de instrutores.
-- **Modalidades**: Catálogo de atividades esportivas, artísticas, fitness e bem-estar (19 modalidades pré-cadastradas).
-- **Instrutores**: Gestão do corpo docente, especialidades múltiplas (1:N), vinculação com conta de acesso e contato direto via WhatsApp.
-- **Pagamentos Operacionais**: Lançamentos financeiros por matrícula e aluno, controle de mensalidades e ação rápida "Dar Baixa".
-- **Painel Financeiro & Repasses (`/financeiro`)**: Dashboard analítico avançado de arrecadação por modalidade, cálculo de repasses a professores (baseado estritamente em mensalidades), retenção de taxas e evolução histórica.
-=======
-O sistema centraliza a gestão operacional e administrativa de:
-- **Alunos**: Cadastro completo de alunos, dados de contato, responsáveis para menores e observações médicas.
-- **Leads & Captação**: Funil de atendimento comercial e conversão direta de contatos em alunos em 1 clique.
-- **Matrículas & Planos**: Vínculo aluno ↔ modalidade ↔ turma, planos (Mensal, Trimestral, Anual), cálculo automático de vencimento e liberação para aula.
-- **Turmas & Grade Horária**: Agrupamento por modalidade, faixa etária, dias da semana, horários, salas e atribuição de instrutores.
-- **Modalidades**: Catálogo de atividades esportivas, artísticas, fitness e bem-estar (19 modalidades pré-cadastradas).
-- **Instrutores**: Gestão do corpo docente, especialidades múltiplas (1:N), vinculação com conta de acesso e contato direto via WhatsApp.
-- **Financeiro & Pagamentos**: Controle de mensalidades, taxas de matrícula, baixa rápida de recebimentos, previsão e inadimplência.
->>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
-- **Presenças & Diário de Classe**: Chamada em lote por turma, data e aula, com filtros inteligentes por instrutor e modalidade.
-- **Aulas & Calendário**: Gestão de aulas agendadas e realizadas por turma e instrutor.
-- **Gestão de Usuários & Aprovações**: Sistema de solicitação de cadastro, fluxo de aprovação/rejeição pela coordenação/secretaria e atribuição de perfis (RBAC).
+O sistema centraliza e automatiza a gestão operacional, pedagógica, financeira e comunitária:
+
+- **Painel de Inteligência & Dashboard Multi-Perfil (`/`)**: 5 visões especializadas por papel (Geral 360°, Financeiro/Controladoria, Coordenação/Retenção, Instrutor/Sala de Aula e Comunicação/Marketing), com KPIs vitais, funil de conversão comercial, balanço de crescimento líquido, assiduidade e avisos de aula.
+- **Alunos (`/alunos`)**: Cadastro detalhado com dados de contato, endereço do DF, responsáveis legais para menores, termos de imagem/comunicação, histórico médico e contato rápido via WhatsApp.
+- **Leads & Captação Comercial (`/leads`)**: Funil comercial com rastreio de canais de aquisição, interesse por modalidade e conversão direta em Aluno em 1 clique.
+- **Matrículas & Planos (`/matriculas`)**: Vínculo Aluno ↔ Modalidade ↔ Turma, planos (Mensal, Trimestral [padrão], Anual), cálculo automático de vigência com extensão por suspensão (+30 dias) e liberação rápida para aula.
+- **Turmas & Grade Horária (`/turmas`)**: Gestão de grade (dias da semana, horários, salas, capacidade máxima), ocupação em tempo real, atribuição de instrutores e alternância entre Cards e Tabela.
+- **Modalidades (`/modalidades`)**: Catálogo com 19 modalidades pré-cadastradas (Pilates, Ballet, Karatê, Ginástica Rítmica, Funcional, Yoga, etc.), áreas temáticas e valores de referência.
+- **Instrutores (`/instrutores`)**: Cadastro do corpo docente, múltiplas especialidades (1:N), vinculação de conta Supabase (`user_id`) e contato direto via WhatsApp.
+- **Pagamentos Operacionais (`/pagamentos`)**: Lançamentos financeiros vinculados por matrícula e aluno, categorização de receitas e botão de ação rápida "Dar Baixa".
+- **Dashboard Financeiro & Repasses (`/financeiro`)**: Painel analítico de arrecadação por modalidade, cálculo de repasse aos professores (baseado exclusivamente em mensalidades), filtros de períodos customizados e exportação CSV formatada para Excel.
+- **Presenças & Diário de Classe (`/presencas`)**: Chamada em lote por turma, data e aula, com filtros inteligentes por instrutor e marcação em massa.
+- **Aulas & Calendário (`/aulas`)**: Gestão de aulas agendadas, realizadas e canceladas por turma e instrutor.
+- **Gestão de Usuários & Governança (`/usuarios`)**: Workflow de aprovação de cadastros (`pendente`, `aprovado`, `rejeitado`), controle de papéis (RBAC) e exclusão segura de contas.
 
 ---
 
-## 2. Arquitetura
+## 2. Arquitetura do Sistema
 
-### Tipo de aplicação
-**Frontend-only SPA** com backend gerenciado via **Supabase** (BaaS).
-Não existe servidor backend local tradicional. Toda a lógica de banco de dados, autenticação, storage e regras de acesso (RLS e RPCs) vive no Supabase (PostgreSQL).
+### Tipo de Aplicação
+- **Frontend-only SPA** construído com React 18, Vite 5 e TypeScript 5.
+- **Backend-as-a-Service (BaaS)** gerenciado via **Supabase** (PostgreSQL 15+, Auth, Row Level Security, RPCs e Storage).
+- Não há servidor backend intermediário: toda regra de persistência, agregação e autorização reside no PostgreSQL/Supabase com validações rigorosas no frontend.
 
-### Navegação e Layout
-- **AppNavbar Superior**: Barra de navegação horizontal com abas inteligentes, rolagem suave com setas direcionais em overflow, badge animado de cadastros pendentes e dropdown de perfil com logout.
-- **Dynamic Home Routing (`HomeRoute`)**:
-  - Usuários com perfil exclusivo de `instrutor` são redirecionados automaticamente para `/aulas`.
-  - Usuários com perfil administrativo (`secretaria` ou `coordenacao`) acessam o `/` (Dashboard analítico).
-- **Code Splitting**: Todas as páginas são carregadas sob demanda via `React.lazy` e encapsuladas por `Suspense` com fallback visual `PageLoader`.
+### Roteamento e Layout Dinâmico
+- **`AppNavbar` Superior**: Barra de navegação horizontal com abas inteligentes, scroll suave com setas em overflow, badge pulsante de novos cadastros pendentes para administradores e dropdown de perfil com logout.
+- **Roteamento Inteligente Inicial (`HomeRoute` em `src/App.tsx`)**:
+  - Usuários com perfil exclusivo de `instrutor` são direcionados diretamente para `/aulas` (ou aba de instrutor no Dashboard).
+  - Usuários administrativos (`secretaria` e `coordenacao`) acessam o Dashboard Geral (`/`).
+- **Code Splitting & Resiliência**: Todas as páginas utilizam lazy loading com a função utilitária `lazyWithRetry`, que detecta chunks expirados após novos deploys e realiza auto-refresh suave.
 
-### Fluxo de dados
+### Fluxo de Dados & Persistência
 
 ```
 Componente React
-    ├── useTable<T>(STORES.X)     ← hook genérico de leitura reativa
-    │       └── getAll<T>(table)  ← lib/store.ts → supabase.from(table).select().order("created_at", { ascending: false })
+    ├── useTable<T>(STORES.TABELA)  ← Hook genérico de leitura reativa
+    │       └── getAll<T>(table)    ← lib/store.ts → supabase.from(table).select().order("created_at", { ascending: false })
     │               └── Supabase PostgreSQL
-    └── Chamadas Específicas / RPCs (supabase.rpc("approve_user", ...))
+    ├── Views & RPCs Agregadoras   ← supabase.rpc("get_financial_dashboard_metrics", ...)
+    └── Mutação de Dados (CRUD)
+            └── create / update / remove ← lib/store.ts (com sanitizePayload)
+                    └── reload()         ← Re-fetch automático dos dados
 ```
 
-Para operações de escrita (CRUD):
-```
-Componente React
-    └── create() / update() / remove()  ← lib/store.ts → supabase.from(table).insert/update/delete
-            └── reload()                ← re-fetch dos dados atualizados
-```
-
-<<<<<<< HEAD
-### Gerenciamento de estado e Validação
-- **Estado Local Reativo**: `useState` + `useMemo` / `useCallback` para cálculos de KPIs e filtros em memória sem re-renderizações desnecessárias.
-- **AuthContext (`useAuth`)**: Contexto global de autenticação, monitorando sessão Supabase, status cadastral (`pendente`, `aprovado`, `rejeitado`), papéis RBAC (`secretaria`, `coordenacao`, `instrutor`), especialidades do professor e `id_instrutor`.
-- **Validação de Tipos com Zod**: Schemas tipados em `src/types/financeiro.ts` para garantir integridade matemática e formatação dos relatórios financeiros.
-=======
-### Gerenciamento de estado
-- **Estado Local Reativo**: `useState` + `useMemo` / `useCallback` para cálculos de KPIs e filtros em memória sem re-renderizações desnecessárias.
-- **AuthContext (`useAuth`)**: Contexto global de autenticação, monitorando sessão Supabase, status cadastral (`pendente`, `aprovado`, `rejeitado`), papéis RBAC (`secretaria`, `coordenacao`, `instrutor`), especialidades do professor e `id_instrutor`.
->>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
-- **TanStack Query**: Provedor configurado em `src/App.tsx` com `staleTime: 5min` para queries assíncronas.
+### Gerenciamento de Estado & Validação
+- **Estado Reativo Local**: `useState`, `useMemo` e `useCallback` para cálculos de KPIs, filtros multi-critério e projeções em tempo O(1) usando `Map` e `Set`.
+- **`AuthContext` (`useAuth`)**: Contexto global de autenticação, monitorando sessão Supabase, papéis RBAC (`secretaria`, `coordenacao`, `instrutor`), status cadastral (`pendente`, `aprovado`, `rejeitado`) e dados do instrutor.
+- **TanStack Query (React Query)**: Cache assíncrono com `staleTime: 5min` e `refetchOnWindowFocus: false`.
+- **Validação de Schemas com Zod**: Schemas tipados em `src/types/financeiro.ts` para validação matemática de receitas, repasses e KPIs.
 
 ---
 
-## 3. Padrões de Código e Estrutura
+## 3. Padrões de Código e Convenções
 
-### Padrão de Página de Módulo (CRUD)
-
-Toda página de módulo segue a estrutura padronizada:
+### 1. Padrão de Páginas CRUD
+Toda página de módulo segue uma estrutura uniforme:
 
 ```tsx
 // 1. Leitura reativa de tabelas
-const { data: itens, reload } = useTable<Tipo>(STORES.TABELA);
-const { data: modalidades } = useTable<Modalidade>(STORES.MODALIDADES);
+const { data: itens, loading, reload } = useTable<ItemType>(STORES.TABELA);
 
-// 2. Estado de formulário, modal e edição
+// 2. Estado de formulário e modal
 const [open, setOpen] = useState(false);
-const [editingItem, setEditingItem] = useState<Tipo | null>(null);
-const [form, setForm] = useState<Tipo>(emptyTipo());
+const [editingItem, setEditingItem] = useState<ItemType | null>(null);
+const [form, setForm] = useState<ItemType>(emptyItem());
 
-// 3. Persistência
+// 3. Persistência segura
 const handleSave = async () => {
   if (editingItem) {
     await update(STORES.TABELA, form);
@@ -109,221 +89,176 @@ const handleSave = async () => {
 // 4. Renderização com PageHeader, StatCards, DataTable e Dialogs
 ```
 
-### Geração de IDs
-Os identificadores das entidades de negócio são gerados no **frontend** via `generateId()` em `lib/store.ts`:
-```ts
-export function generateId() {
-  return crypto.randomUUID().slice(0, 8).toUpperCase();
-}
-```
-Exemplo de ID gerado: `A3F1B2C4`.
-> ⚠️ **Importante**: As tabelas de negócio usam `id text PRIMARY KEY`. IDs são strings de 8 dígitos hexadecimais geradas pelo cliente antes da inserção. Perfis de auth (`profiles`, `auth.users`, `notifications`) utilizam `UUID`.
+### 2. Geração de IDs de Negócio
+- Identificadores das entidades de negócio são strings alfanuméricas de 8 caracteres geradas no frontend via `generateId()` em `lib/store.ts`:
+  ```ts
+  export function generateId() {
+    return crypto.randomUUID().slice(0, 8).toUpperCase();
+  }
+  ```
+- Tabelas de negócio usam `id text PRIMARY KEY`.
+- Tabelas de autenticação e sistema (`profiles`, `auth.users`, `notifications`, `user_roles`) utilizam `UUID`.
 
-### Funções CRUD Genéricas (`src/lib/store.ts`)
+### 3. Sanitização de Payloads (`sanitizePayload` em `lib/store.ts`)
+Evita erros de sintaxe PostgreSQL (`invalid input syntax for type date: ""`) convertendo automaticamente strings vazias em campos de data ou FKs para `null`:
+- Campos `data_*`, `created_at`, `updated_at`: `""` ➔ `null`.
+- Chaves estrangeiras `id_*` e `user_id`: `""` ➔ `null`.
+- Valores numéricos `NaN`: `NaN` ➔ `null`.
+
+### 4. Funções CRUD Genéricas (`src/lib/store.ts`)
 
 | Função | Descrição |
 |---|---|
 | `getAll<T>(table)` | Busca todos os registros ordenados por `created_at DESC` |
-| `getById<T>(table, id)` | Busca um registro por ID |
-| `create<T>(table, item)` | Insere um registro (lança erro em falha) |
-| `update<T>(table, item)` | Atualiza registro localizando por `item.id` |
+| `getById<T>(table, id)` | Busca registro único por ID via `.maybeSingle()` |
+| `create<T>(table, item)` | Insere registro sanitizado |
+| `update<T>(table, item)` | Atualiza registro pelo campo `id` |
 | `remove(table, id)` | Remove registro por ID |
 
-### Utilitários de Matrícula (`src/lib/matriculaUtils.ts`)
+### 5. Utilitários de Matrícula (`src/lib/matriculaUtils.ts`)
 
 | Função | Descrição |
 |---|---|
-| `calcularDataFimPrevista(inicio, plano, status, diasProrrogacao)` | Calcula a data de término somando 1 mês (Mensal), 3 meses (Trimestral) ou 12 meses (Anual), adicionando +30 dias para status de trancamento/suspensão |
-| `calcularDataFimPrevistaBR(...)` | Retorna a data final formatada diretamente no padrão `DD/MM/YYYY` |
-| `isMatriculaTrancada(status)` | Identifica `SUSPENSA_30_DIAS` ou `TRANCADA_JUSTIFICADA` |
-| `isMatriculaInadimplente(status)` | Identifica `BLOQUEADA_INADIMPLENCIA` |
-| `isMatriculaVencida(dataFim)` | Verifica se a data de término expirou em relação à data atual |
-<<<<<<< HEAD
+| `calcularDataFimPrevista(inicio, plano, status, diasProrrogacao)` | Calcula data de término: Mensal (+1 mês), Trimestral (+3 meses) ou Anual (+12 meses), somando +30 dias se houver suspensão/trancamento |
+| `calcularDataFimPrevistaBR(...)` | Retorna data final formatada em `DD/MM/YYYY` |
+| `isMatriculaTrancada(status)` | Detecta `SUSPENSA_30_DIAS` ou `TRANCADA_JUSTIFICADA` |
+| `isMatriculaInadimplente(status)` | Detecta `BLOQUEADA_INADIMPLENCIA` |
+| `isMatriculaVencida(dataFim)` | Avalia se a vigência expirou em relação à data atual |
 
-### Schemas e Tipos Financeiros (`src/types/financeiro.ts`)
+### 6. Schemas e Tipos Financeiros (`src/types/financeiro.ts`)
 
 | Schema / Tipo | Descrição |
 |---|---|
-| `ModalidadeRevenueSchema` | Validação de receita total arrecadada, mensalidades, taxas de matrícula e contagem de alunos por modalidade |
-| `ProfessorRepasseSchema` | Validação do valor de repasse a instrutores calculado **exclusivamente sobre mensalidades**, rastreando taxas retidas pela escola |
-| `ModalidadeMatriculasSchema`| Distribuição de matrículas ativas e percentual de participação de cada atividade |
-| `KpiFinancialSummarySchema` | Indicadores de receita acumulada, total a repassar, taxas de matrícula, ticket médio e taxa de adimplência |
-| `EvolucaoFinanceiraMensalSchema` | Histórico mensal comparando receitas de mensalidades, taxas extras e repasse a professores |
-=======
->>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
+| `ModalidadeRevenueSchema` | Validação de receita total, mensalidades, taxas de matrícula, outros lançamentos e matrículas ativas por modalidade |
+| `ProfessorRepasseSchema` | Validação da base de repasse calculada **estritamente sobre mensalidades**, rastreando taxas retidas pela instituição |
+| `ModalidadeMatriculasSchema` | Distribuição e percentual de matrículas ativas por atividade |
+| `KpiFinancialSummarySchema` | Indicadores de receita acumulada, total a repassar, taxas, ticket médio e adimplência |
+| `FinancialFilterSchema` | Filtros por período (`mes_atual`, `3m`, `6m`, `ano`, `geral`, `personalizado`) |
+| `EvolucaoFinanceiraMensalSchema` | Histórico mensal comparativo de arrecadação |
 
 ---
 
-## 4. Autenticação, Autorização e Workflow de Aprovação
+## 4. Autenticação, Autorização e Governança RBAC
 
-### Perfis de Acesso (RBAC)
-Os papéis de acesso são armazenados na tabela `user_roles` (`role: app_role`), associados ao `auth.users.id`:
+### Perfis de Acesso (`AppRole`)
+Os papéis são gravados na tabela `user_roles` (`role: app_role`), associados ao `auth.users(id)`:
 
 ```ts
 export type AppRole = "secretaria" | "coordenacao" | "instrutor";
 export type UserStatus = "pendente" | "aprovado" | "rejeitado";
 ```
 
-| Perfil | Nível Admin (`isAdmin`) | Destino Inicial | Módulos com Acesso |
+| Perfil | Nível Admin (`isAdmin`) | Destino Inicial | Módulos e Permissões |
 |---|---|---|---|
-| **`secretaria`** | ✅ Sim | `/` (Dashboard) | Acesso total a todas as rotas e gestão administrativa/financeira/usuários |
-<<<<<<< HEAD
-| **`coordenacao`** | ✅ Sim | `/` (Dashboard) | Acesso a todos os módulos operacionais, pagamentos, financeiro analítico e aprovação de usuários |
-=======
-| **`coordenacao`** | ✅ Sim | `/` (Dashboard) | Acesso a todos os módulos operacionais, financeiros e aprovação de usuários |
->>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
-| **`instrutor`** | ❌ Não | `/aulas` | Acesso restrito a Turmas, Modalidades, Presenças e Aulas |
+| **`secretaria`** | ✅ Sim | `/` (Dashboard) | Acesso irrestrito a todos os módulos operacionais, financeiros, pedagógicos e aprovação de usuários |
+| **`coordenacao`** | ✅ Sim | `/` (Dashboard) | Gestão de alunos, turmas, matrículas, presenças, pagamentos, dashboard analítico e aprovação de usuários |
+| **`instrutor`** | ❌ Não | `/aulas` | Acesso focado em Turmas, Modalidades, Presenças (Diário) e Aulas de sua especialidade |
 
-### Fluxo de Aprovação de Novos Usuários (Approval Workflow)
-1. **Cadastro**: O usuário se registra em `/auth`. A conta é criada no `auth.users` e inserida em `profiles` com `status = 'pendente'`.
-2. **Notificação**: Uma notificação é gerada na tabela `notifications` direcionada à coordenação/secretaria.
-3. **Bloqueio no Login**: Tentativas de login por usuários pendentes ou rejeitados são interceptadas no `AuthPage`, exibindo feedback claro e desconectando a sessão temporária.
+### Workflow de Aprovação de Novos Usuários
+1. **Cadastro**: O usuário se registra na tela `/auth`. O registro é inserido em `profiles` com `status = 'pendente'`.
+2. **Notificação Automática**: Trigger `handle_new_user` gera registro em `notifications` para a equipe administrativa.
+3. **Bloqueio no Login**: Usuários pendentes ou rejeitados são barrados na autenticação com mensagem contextual.
 4. **Avaliação em `/usuarios`**:
-   - **Aprovação**: Administradores abrem o modal de aprovação, selecionam o cargo obrigatório (`secretaria`, `coordenacao` ou `instrutor`) e, para instrutores, vinculam modalidades/especialidades lecionadas. Executa a RPC `approve_user`.
-   - **Rejeição**: Administradores informam o motivo da recusa. Executa a RPC `reject_user`.
-   - **Exclusão**: Administradores podem excluir contas pendentes ou desativadas com segurança atômica via RPC `delete_user_account` (bloqueada para a própria conta).
+   - **Aprovação**: Administrador seleciona cargo obrigatório (`secretaria`, `coordenacao`, `instrutor`) e especialidades/modalidades do instrutor. Invoca a RPC segura `approve_user`.
+   - **Rejeição**: Administrador insere justificativa de recusa. Invoca a RPC segura `reject_user`.
+   - **Exclusão Segura**: Administrador pode remover cadastros pendentes ou desativados via RPC `delete_user_account` (bloqueada contra auto-exclusão).
 
 ---
 
 ## 5. Banco de Dados e Esquema Relacional
 
-### Tabelas Principais
+### Tabelas Principais (Supabase / PostgreSQL)
 
-| Tabela | Chave Primária | Relacionamentos e Observações |
+| Tabela | Chave Primária | Relacionamentos e Finalidade |
 |---|---|---|
-| `alunos` | `id text` | Dados pessoais, endereço (DF), responsável por menor, aceite médico e de imagem |
-| `leads` | `id text` | Funil comercial de captação; conversão em aluno em 1 clique |
-| `matriculas` | `id text` | FKs para `alunos`, `modalidades`, `turmas`. Suporta `tipo_plano` e `liberado_para_aula` |
-| `turmas` | `id text` | FK para `modalidades`, FK para `instrutores`. Campos `dias_semana: text[]`, `horario_inicio`, `horario_fim`, `sala` |
-| `modalidades` | `id text` | Catálogo com 19 modalidades pré-cadastradas, área temática e valor padrão |
-| `instrutores` | `id text` | FK opcional para `auth.users(id)`. Campos `especialidades: text[]`, `id_modalidades: text[]` |
-| `pagamentos` | `id text` | FKs para `matriculas` e `alunos`. Lançamentos mensais com controle de baixa rápida |
+| `alunos` | `id text` | Dados cadastrais, endereço (Brasília-DF), responsável legal, termo de imagem e observações médicas |
+| `leads` | `id text` | Funil comercial de captação; conversão em aluno em 1 clique via `converteu_em_aluno` |
+| `matriculas` | `id text` | FKs para `alunos`, `modalidades`, `turmas`. Suporta `tipo_plano`, `tipo_matricula` e `liberado_para_aula` |
+| `turmas` | `id text` | FKs para `modalidades` e `instrutores`. Grade com `dias_semana: text[]`, `horario_inicio`, `horario_fim`, `sala` |
+| `modalidades` | `id text` | Catálogo de 19 atividades esportivas e culturais com área temática e valor base |
+| `instrutores` | `id text` | FK opcional para `auth.users(id)`. Campos `especialidades: text[]`, `id_modalidades: text[]`, `funcao` |
+| `pagamentos` | `id text` | FKs para `matriculas` e `alunos`. Lançamentos mensais com baixa rápida |
 | `presencas` | `id text` | FKs para `turmas`, `matriculas`, `alunos`. Diário de chamada por aula e data |
 | `aulas` | `id text` | FKs para `turmas` e `instrutores`. Calendário de aulas com status e observações |
 | `profiles` | `id uuid` | Espelho de `auth.users` com `status`, `approved_by`, `especialidades`, `id_instrutor` |
-| `user_roles` | `id uuid` | Vínculo N:M entre `user_id` e `app_role` (`secretaria`, `coordenacao`, `instrutor`) |
-| `notifications`| `id uuid` | Notificações internas para a equipe administrativa |
+| `user_roles` | `id uuid` | Vínculo entre usuário e papéis RBAC (`secretaria`, `coordenacao`, `instrutor`) |
+| `notifications` | `id uuid` | Notificações internas de novos cadastros e alertas |
 
-### Enums e Status do Sistema
+### Views Otimizadas de Inteligência Financeira
+- **`view_arrecadacao_modalidades`**: Consolida toda receita paga (mensalidades + taxas + avulsos), quantidade de transações e alunos ativos por modalidade.
+- **`view_repasse_professores`**: Calcula a base de repasse de cada professor considerando **exclusivamente pagamentos com `tipo_lancamento = 'MENSALIDADE'`**, isolando taxas retidas pela escola.
+- **`view_matriculas_ativas_modalidades`**: Distribuição percentual de matrículas ativas por modalidade.
 
-- **`alunos.status_cadastral`**: `ATIVO`, `INATIVO`
-- **`leads.status_lead`**: `NOVO`, `EM_ATENDIMENTO`, `AGUARDANDO_RETORNO`, `AGENDADO`, `CONVERTIDO`, `NAO_CONVERTIDO`, `PERDIDO`
-- **`matriculas.status_matricula`**: `PENDENTE_LIBERACAO`, `ATIVA`, `SUSPENSA_30_DIAS`, `TRANCADA_JUSTIFICADA`, `BLOQUEADA_INADIMPLENCIA`, `EXPERIMENTAL`, `CANCELADA`, `CONCLUIDA`
-- **`matriculas.tipo_plano`**: `MENSAL`, `TRIMESTRAL`, `ANUAL`
-- **`matriculas.tipo_matricula`**: `NORMAL`, `BOLSA`, `DESCONTO_ESPECIAL`, `ASSOCIADO_MCJB`, `CORTESIA`, `EXPERIMENTAL_CONVERTIDA`
-- **`pagamentos.status_pagamento`**: `PREVISTO`, `PENDENTE`, `PAGO`, `ATRASADO`, `ISENTO`, `ESTORNADO`, `NEGOCIADO`
-- **`pagamentos.tipo_lancamento`**: `MENSALIDADE`, `TAXA_MATRICULA`, `MATERIAL`, `REPOSICAO`, `MULTA`, `DESCONTO`, `AJUSTE`
-- **`turmas.status_turma`**: `ATIVA`, `INATIVA`
-- **`modalidades.status`**: `ATIVO`, `INATIVO`
-- **`aulas.status_aula`**: `AGENDADA`, `REALIZADA`, `CANCELADA`
-- **`profiles.status`**: `pendente`, `aprovado`, `rejeitado`
+### Funções RPC Críticas
 
----
-
-## 6. Componentes Reutilizáveis Principais
-
-### `DataTable` (`src/components/DataTable.tsx`)
-Componente universal de tabela de dados com recursos avançados:
-- **Busca Textual com Debounce (250ms)** por múltiplas chaves de busca.
-- **Filtros Multi-Critério** com seletores e tags de remoção rápida.
-- **Ordenação Dinâmica** ascendente / descendente por qualquer coluna.
-- **Paginação em Memória** configurável (5, 10, 20, 50, 100 itens por página).
-- **Exportação CSV** com suporte a caracteres acentuados (UTF-8 com BOM para Microsoft Excel).
-- **Confirmação de Exclusão** via `AlertDialog` visual antes de deletar registros.
-- **Formatação Automática de Datas** brasileiras (`DD/MM/YYYY`).
-
-### `StatusBadge` (`src/components/StatusBadge.tsx`)
-Renderiza badges com cores semânticas padronizadas:
-- **Verde (`success`)**: `ATIVO`, `ATIVA`, `CONVERTIDO`, `PAGO`, `REALIZADA`, `aprovado`
-- **Azul (`info`)**: `NOVO`, `EM_ATENDIMENTO`, `AGUARDANDO_RETORNO`
-- **Amarelo (`warning`)**: `PENDENTE`, `PENDENTE_LIBERACAO`, `SUSPENSA_30_DIAS`, `PREVISTO`, `AGENDADA`, `pendente`
-- **Vermelho (`destructive`)**: `ATRASADO`, `CANCELADA`, `CANCELADO`, `BLOQUEADA_INADIMPLENCIA`, `PERDIDO`, `rejeitado`
-- **Roxo (`primary`)**: `EXPERIMENTAL`
-- **Cinza (`muted`)**: `INATIVO`, `INATIVA`, `ISENTO`
-
-### `CpfInput` (`src/components/CpfInput.tsx`)
-Input controlado com máscara automática (`000.000.000-00`), cálculo de validação dos 2 dígitos verificadores do CPF e feedback visual de status válido/inválido.
-
-### `PageHeader` (`src/components/PageHeader.tsx`)
-Cabeçalho padrão contendo título da página, descrição contextual, badge contador e slot para ações principais (botões de criação e filtros).
-
-### `StatCard` (`src/components/StatCard.tsx`)
-Cards analíticos de indicadores com ícone temático, suporte a variantes visuais (`default`, `primary`, `success`, `warning`, `destructive`) e indicador de tendência.
+| RPC | Segurança | Finalidade |
+|---|---|---|
+| `approve_user(target_user_id, role)` | `SECURITY DEFINER` | Aprova cadastro e atribui perfil em `user_roles` usando `auth.uid()` para validação |
+| `reject_user(target_user_id, reason)` | `SECURITY DEFINER` | Rejeita cadastro registrando justificativa |
+| `delete_user_account(target_user_id)` | `SECURITY DEFINER` | Remove perfil, roles, notificações e conta `auth.users` com trava de auto-exclusão |
+| `get_financial_dashboard_metrics(ano, mes)` | `SECURITY DEFINER` | Retorna JSON consolidado de KPIs, arrecadação, repasses e evolução mensal |
 
 ---
 
-## 7. Origem dos Dados e Seed Inicial
-
-### Alunos — Origem do Primeiro Contato
-Canais cadastrados: `INSTAGRAM`, `INDICACAO`, `PRESENCIAL`, `WHATSAPP`, `OUTRO`.
-
-### Modalidades Pré-cadastradas (19 modalidades)
-Inseridas no seed inicial com IDs mnemônicos fixos:
-`PIL2X001` (Pilates 2X), `PIL3X001` (Pilates 3X), `GINRIT01` (Ginástica Rítmica), `DESPIN01` (Desenho e Pintura), `KARATE01` (Karatê), `BALLET01` (Ballet), `KICKBOX1` (Kickboxing), `JIUJITS1` (Jiu-Jitsu), `TAEKWON1` (Taekwondo), `CAPOEIR1` (Capoeira), `YOGA0001` (Yoga), `FUNCPWR1` (Funcional Power), `TEATRO01` (Teatro), `CANTO001` (Canto), `PWRJUMP1` (PowerJump), `BODYPMP1` (BodyPump), `TAICHI01` (TaiChiChuan), `CROCHE01` (Crochê), `TRICO001` (Tricô).
-
----
-
-## 8. Variáveis de Ambiente
-
-| Variável | Descrição |
-|---|---|
-| `VITE_SUPABASE_URL` | URL do projeto Supabase (ex: `https://xxx.supabase.co`) |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave pública (anon/publishable key) do Supabase |
-
----
-
-## 9. Histórico Completo de Migrações SQL
+## 6. Histórico Completo de Migrações SQL
 
 Localização: `supabase/migrations/`
 
-| Arquivo de Migração | Finalidade e Conteúdo |
+| Migração | Descrição e Impacto |
 |---|---|
 | `20260623184449_*.sql` | Schema inicial completo (8 tabelas) + seed de 19 modalidades + ativação de RLS inicial |
-| `20260623185538_*.sql` | Tabelas de segurança e auth: `profiles` e `user_roles` |
-| `20260623185557_*.sql` | Políticas complementares de RLS |
-| `20260824222327_create_aulas_table.sql` | Criação da tabela `aulas` com FKs, índices e políticas de acesso por cargo |
+| `20260623185538_*.sql` | Tabelas de segurança e autenticação: `profiles` e `user_roles` |
+| `20260623185557_*.sql` | Políticas complementares de segurança RLS |
+| `20260824222327_create_aulas_table.sql` | Criação da tabela `aulas` com FKs para turmas e instrutores |
 | `20260825000000_approval_workflow.sql` | Enum `user_status`, tabela `notifications`, trigger `handle_new_user`, RPCs `approve_user` e `reject_user` |
-| `20260826000000_user_management_and_deletion.sql` | RPC `delete_user_account` para exclusão segura de usuários e permissões administrativas |
-| `20260827000000_turmas_schedule_and_instructor_modalities.sql` | Grade de horários em turmas (`dias_semana`, `horario_inicio`, `horario_fim`, `sala`), especialidades múltiplas em instrutores (`especialidades: text[]`, `id_modalidades: text[]`, `user_id`) e índices |
-| `20260828000000_add_tipo_plano_to_matriculas.sql` | Coluna `tipo_plano` na tabela `matriculas` (padrão `TRIMESTRAL`) |
+| `20260826000000_user_management_and_deletion.sql` | RPC `delete_user_account` com proteção contra auto-exclusão |
+| `20260827000000_turmas_schedule_and_instructor_modalities.sql` | Grade de turmas (`dias_semana`, horários, salas), especialidades múltiplas em instrutores (`especialidades: text[]`, `id_modalidades: text[]`, `user_id`) |
+| `20260828000000_add_tipo_plano_to_matriculas.sql` | Adição da coluna `tipo_plano` em `matriculas` (Mensal, Trimestral, Anual) |
+| `20260829000000_financial_dashboard_metrics.sql` | Views analíticas de receita/repasse e RPC `get_financial_dashboard_metrics` |
+| `20260830000000_fix_security_and_rbac_policies.sql` | Correção de segurança IDOR nas RPCs de usuários, uso de `auth.uid()` e RLS administrativo em `user_roles` |
 
 ---
 
-## 10. Convenções, Regras de Negócio e Gotchas
+## 7. Componentes Reutilizáveis & Design System
 
-<<<<<<< HEAD
-1. **Regras de Repasse Financeiro aos Professores (Regra de Ouro)**:
-   - O repasse do professor é calculado **exclusivamente sobre lançamentos com `tipo_lancamento = 'MENSALIDADE'`**.
-   - Taxas de matrícula, material didático, multas e reposições pertencem integralmente à escola/MCJB e são separadas na coluna `total_taxas_nao_repassadas`.
-2. **Arrecadação Total por Modalidade**:
-   - A arrecadação total de cada modalidade consolida todas as entradas recebidas (mensalidades, taxas de matrícula, reposições e avulsos).
-3. **Valores Nulos em FKs Opcionais**:
-   - Ao gravar matrículas, turmas e pagamentos, campos de chave estrangeira vazios no formulário devem ser transmitidos como `null` (e nunca como string vazia `""`), evitando erros de violação de FK no PostgreSQL.
+- **`DataTable` (`src/components/DataTable.tsx`)**: Tabela universal com busca debounced (250ms), filtros multi-critério, ordenação dinâmica por coluna, paginação configurável (5 a 100 itens), confirmação de exclusão via `AlertDialog` e exportação CSV com UTF-8 BOM.
+- **`StatusBadge` (`src/components/StatusBadge.tsx`)**: Badges com cores semânticas padronizadas:
+  - **Verde (`success`)**: `ATIVO`, `ATIVA`, `CONVERTIDO`, `PAGO`, `REALIZADA`, `aprovado`
+  - **Azul (`info`)**: `NOVO`, `EM_ATENDIMENTO`, `AGUARDANDO_RETORNO`
+  - **Amarelo (`warning`)**: `PENDENTE`, `PENDENTE_LIBERACAO`, `SUSPENSA_30_DIAS`, `PREVISTO`, `AGENDADA`, `pendente`
+  - **Vermelho (`destructive`)**: `ATRASADO`, `CANCELADA`, `CANCELADO`, `BLOQUEADA_INADIMPLENCIA`, `PERDIDO`, `rejeitado`
+  - **Roxo (`primary`)**: `EXPERIMENTAL`
+  - **Cinza (`muted`)**: `INATIVO`, `INATIVA`, `ISENTO`
+- **`VisualFunnel` (`src/components/dashboard/VisualFunnel.tsx`)**: Renderização gráfica de funil de conversão em camadas com taxas de passagem percentuais.
+- **`DivergentBarChart` (`src/components/dashboard/DivergentBarChart.tsx`)**: Gráfico de barras divergentes para balanço de entradas vs saídas e novos alunos vs cancelamentos.
+- **`RadialGauge` (`src/components/dashboard/RadialGauge.tsx`)**: Mostrador circular analógico para metas de assiduidade e satisfação comunitária.
+- **`AttendanceHeatmap` (`src/components/dashboard/AttendanceHeatmap.tsx`)**: Matriz visual de calor semanal cruzando dias da semana e turnos (Manhã, Tarde, Noite).
+- **`BulletProgressBar` (`src/components/dashboard/BulletProgressBar.tsx`)**: Barra de progresso comparando valor realizado versus meta alvo.
+- **`CpfInput` (`src/components/CpfInput.tsx`)**: Input controlado com máscara automática (`000.000.000-00`), cálculo dos 2 dígitos verificadores e feedback visual.
+- **`PageHeader` (`src/components/PageHeader.tsx`)**: Cabeçalho de página com título, subtítulo, badge contador e slot para botões de ação.
+- **`StatCard` (`src/components/StatCard.tsx`)**: Card de KPIs com ícone temático, suporte a barras de progresso, metas e indicadores de tendência.
+
+---
+
+## 8. Regras de Negócio e Gotchas Críticos
+
+1. **Regra de Ouro do Repasse a Professores**:
+   - O repasse do professor é calculado **estritamente sobre pagamentos com `tipo_lancamento = 'MENSALIDADE'` e status `PAGO`**.
+   - Taxas de matrícula, material didático, reposições e multas pertencem 100% à administração da instituição e **nunca** entram na base de repasse docente.
+2. **Arrecadação Total da Modalidade**:
+   - Consolida todas as entradas recebidas (mensalidades + taxas + avulsos).
+3. **Tratamento de Foreign Keys Vazias**:
+   - Ao gravar matrículas, turmas, aulas ou pagamentos, campos FK opcionais não preenchidos devem ser sanitizados para `null` (nunca `""`).
 4. **Cálculo de Vigência de Matrícula**:
-=======
-1. **Valores Nulos em FKs Opcionais**:
-   - Ao gravar matrículas, turmas e pagamentos, campos de chave estrangeira vazios no formulário devem ser transmitidos como `null` (e nunca como string vazia `""`), evitando erros de violação de FK no PostgreSQL.
-2. **Cálculo de Vigência de Matrícula**:
->>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
    - `MENSAL`: soma 1 mês.
    - `TRIMESTRAL`: soma 3 meses.
    - `ANUAL`: soma 12 meses.
    - Status `SUSPENSA_30_DIAS` ou `TRANCADA_JUSTIFICADA`: prorroga a data final automaticamente em +30 dias.
-<<<<<<< HEAD
-5. **Baixa Rápida de Pagamento**:
-   - O botão "Dar Baixa" em `PagamentosPage` atualiza o status para `PAGO`, registra a `data_pagamento` atual e preenche o `valor_pago` caso esteja zerado.
-6. **Visibilidade e Acesso de Instrutores**:
-   - O perfil `instrutor` tem acesso simplificado e focado nas turmas e presenças que correspondem às suas modalidades/especialidades ou à sua atribuição direta na turma.
-7. **Formatação de Datas em Todo o Sistema**:
-   - Todas as exibições visuais utilizam o formato brasileiro `DD/MM/YYYY` via `formatDateToBR` em `src/lib/utils.ts`.
-8. **Proteção de Auto-Alteração em Usuários**:
-=======
-3. **Baixa Rápida de Pagamento**:
-   - O botão "Dar Baixa" em `PagamentosPage` atualiza o status para `PAGO`, registra a `data_pagamento` atual e preenche o `valor_pago` caso esteja zerado.
-4. **Visibilidade e Acesso de Instrutores**:
-   - O perfil `instrutor` tem acesso simplificado e focado nas turmas e presenças que correspondem às suas modalidades/especialidades ou à sua atribuição direta na turma.
-5. **Formatação de Datas em Todo o Sistema**:
-   - Todas as exibições visuais utilizam o formato brasileiro `DD/MM/YYYY` via `formatDateToBR` em `src/lib/utils.ts`.
-6. **Proteção de Auto-Alteração em Usuários**:
->>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
-   - Nenhum administrador pode excluir a sua própria conta ou desmarcar os seus próprios papéis de acesso em `/usuarios`.
+5. **Ação Rápida "Dar Baixa"**:
+   - Atualiza o status para `PAGO`, preenche a `data_pagamento` com a data atual e preenche o `valor_pago` caso esteja zerado.
+6. **Formatação Padronizada de Datas**:
+   - Todas as datas exibidas na interface devem ser formatadas no padrão brasileiro `DD/MM/YYYY` via `formatDateToBR` em `src/lib/utils.ts`.
+7. **Proteção contra Auto-Modificação**:
+   - Administradores logados são impedidos de excluir a sua própria conta ou revogar seus próprios privilégios em `/usuarios`.
+8. **Resolução Relacional O(1)**:
+   - Cálculos analíticos no frontend devem construir dicionários `Map` no `useMemo` para cruzar alunos, matrículas, turmas e modalidades em tempo linear.

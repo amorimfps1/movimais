@@ -1,10 +1,6 @@
 # MOVI+ — Sistema de Gestão do MCJB
 
-<<<<<<< HEAD
-Plataforma web completa para gestão operacional, pedagógica e financeira de atividades, alunos, leads, matrículas, turmas, instrutores, pagamentos, financeiro analítico, presenças e aulas do **Movimento Comunitário do Jardim Botânico (MCJB)** em Brasília-DF.
-=======
-Plataforma web completa para gestão operacional, pedagógica e financeira de atividades, alunos, leads, matrículas, turmas, instrutores, pagamentos, presenças e aulas do **Movimento Comunitário do Jardim Botânico (MCJB)** em Brasília-DF.
->>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
+Plataforma web completa e moderna para gestão operacional, pedagógica, comunitária e financeira do **Movimento Comunitário do Jardim Botânico (MCJB)**, instituição comunitária em Brasília-DF que atende cerca de 500 alunos em atividades esportivas, artísticas, culturais e de bem-estar.
 
 ---
 
@@ -14,38 +10,35 @@ Plataforma web completa para gestão operacional, pedagógica e financeira de at
 
 | Tecnologia | Versão | Função |
 |---|---|---|
-| **React** | 18.x | Biblioteca de interface de usuário (SPA) |
+| **React** | 18.x | Biblioteca de interface de usuário SPA |
 | **Vite** | 5.x | Build tool e servidor de desenvolvimento ultrarrápido |
-| **TypeScript** | 5.x | Tipagem estática rigorosa e prevenção de erros |
-| **Tailwind CSS** | 3.x | Framework de estilização utilitária com design system escuro |
-| **Radix UI / shadcn** | — | Componentes headless e acessíveis (Dialogs, Selects, Dropdowns, Tooltips) |
-| **React Router DOM** | 6.x | Roteamento dinâmico SPA com proteção por perfil e code splitting |
-| **TanStack Query** | 5.x | Gerenciamento de estado e cache assíncrono |
-<<<<<<< HEAD
-| **Zod** | 3.x | Validação e tipagem de schemas de dados |
-=======
->>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
-| **Recharts** | 2.x | Visualizações gráficas analíticas interativas (Bar, Pie, Area) |
-| **Lucide React** | — | Pacote abrangente de ícones modernos |
-| **Sonner / Toaster** | — | Notificações toast responsivas em tempo real |
+| **TypeScript** | 5.x | Tipagem estática rigorosa e prevenção de erros em tempo de compilação |
+| **Tailwind CSS** | 3.x | Framework utilitário de estilização com design system escuro |
+| **Radix UI / shadcn** | — | Primitivas headless acessíveis (Dialogs, Selects, Dropdowns, Sheets, Tooltips) |
+| **React Router DOM** | 6.x | Roteamento dinâmico SPA com proteção RBAC e code splitting |
+| **TanStack Query** | 5.x | Gerenciamento de cache e estado assíncrono |
+| **Zod** | 3.x | Validação rigorosa e inferência de tipos dos dados financeiros |
+| **Recharts** | 2.x | Visualizações gráficas analíticas interativas (Bar, Pie, Line, Area) |
+| **Lucide React** | — | Coleção abrangente de ícones modernos e consistentes |
+| **Sonner / Toaster** | — | Notificações toast responsivas e feedback ao usuário |
 
 ### Backend / Banco de Dados
 
 | Tecnologia | Função |
 |---|---|
-| **Supabase** | Backend-as-a-Service (PostgreSQL, Auth, RLS, RPCs, Storage) |
-| **PostgreSQL** | Banco de dados relacional com integridade referencial e triggers |
-| **Supabase Auth** | Autenticação segura por e-mail/senha com controle de sessão |
+| **Supabase** | Backend-as-a-Service (PostgreSQL, Auth, Row Level Security, RPCs, Storage) |
+| **PostgreSQL 15+** | Banco de dados relacional com integridade referencial, triggers e views otimizadas |
+| **Supabase Auth** | Autenticação segura por e-mail/senha com controle de sessão e tokens JWT |
 | **Row Level Security (RLS)** | Políticas de segurança por linha granulares no banco |
 
 ### Testes & Qualidade
 
 | Tecnologia | Função |
 |---|---|
-| **Vitest** | Suíte de testes unitários e de integração |
+| **Vitest** | Suíte de testes unitários e de integração de alta performance |
 | **Testing Library** | Testes de componentes React e acessibilidade |
-| **Playwright** | Testes end-to-end (E2E) em navegadores reais |
-| **ESLint** | Validação de padrões de código e boas práticas |
+| **Playwright** | Testes end-to-end (E2E) automatizados em navegadores reais |
+| **ESLint** | Padronização e análise estática de código |
 
 ---
 
@@ -57,64 +50,66 @@ movimais/
 ├── src/
 │   ├── assets/                 # Logotipos e identidade visual do MCJB
 │   ├── components/             # Componentes reutilizáveis
+│   │   ├── dashboard/          # Componentes visuais analíticos do Dashboard
+│   │   │   ├── AttendanceHeatmap.tsx       # Matriz de calor semanal de assiduidade
+│   │   │   ├── BulletProgressBar.tsx       # Barra de progresso comparando realizado vs meta
+│   │   │   ├── CustomChartTooltips.tsx     # Tooltips estilizados para Recharts
+│   │   │   ├── DashboardGeral.tsx          # Visão 360° da gestão com Hero KPIs e funil
+│   │   │   ├── DashboardFinanceiroView.tsx # Controladoria, fluxo divergente e cobrança
+│   │   │   ├── DashboardCoordenacaoView.tsx# Retenção pedagógica e busca ativa de faltas
+│   │   │   ├── DashboardInstrutorView.tsx  # Visão do professor, chamadas e ocupação
+│   │   │   ├── DashboardComunicacaoView.tsx# Aquisição multicanal e demanda de cursos
+│   │   │   ├── DivergentBarChart.tsx       # Gráfico de barras divergentes (entradas vs saídas)
+│   │   │   ├── RadialGauge.tsx             # Mostrador circular analógico para metas
+│   │   │   └── VisualFunnel.tsx            # Funil de conversão visual em etapas
 │   │   ├── ui/                 # Componentes base (shadcn / Radix UI)
-│   │   ├── AppLayout.tsx       # Layout principal com suporte a navbar superior
-│   │   ├── AppNavbar.tsx       # Barra de navegação superior com abas, scroll suave e badges
+│   │   ├── AppLayout.tsx       # Layout principal com Navbar superior integrada
+│   │   ├── AppNavbar.tsx       # Navbar superior com abas, scroll suave, badges e perfil
 │   │   ├── AppSidebar.tsx      # Sidebar colapsável alternativa
-│   │   ├── CpfInput.tsx        # Campo com máscara automática e validação de CPF
-│   │   ├── DataTable.tsx       # Tabela universal com busca debounced, filtros, ordenação, paginação e exportação CSV
-<<<<<<< HEAD
-│   │   ├── ErrorBoundary.tsx   # Tratamento e captura global de erros React
-=======
->>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
+│   │   ├── CpfInput.tsx        # Campo com máscara automática e validação de dígitos do CPF
+│   │   ├── DataTable.tsx       # Tabela universal com busca debounced, filtros, ordenação, paginação e CSV
+│   │   ├── ErrorBoundary.tsx   # Captura global de erros da árvore React
 │   │   ├── MoviLogo.tsx        # Logotipo vetorial responsivo
 │   │   ├── NavLink.tsx         # Link com detecção de rota ativa
 │   │   ├── PageHeader.tsx      # Cabeçalho padronizado de páginas com ações e badges
 │   │   ├── ProtectedRoute.tsx  # Proteção de rotas por sessão e papéis RBAC
-│   │   ├── StatCard.tsx        # Cards de KPIs e métricas com tendências
-│   │   └── StatusBadge.tsx     # Badges semânticos de status
+│   │   ├── StatCard.tsx        # Cards de KPIs com suporte a barras de progresso e tendências
+│   │   └── StatusBadge.tsx     # Badges semânticos de status com código de cores
 │   ├── hooks/
 │   │   ├── useAuth.tsx         # Contexto de autenticação, perfis (RBAC), aprovação e dados do instrutor
 │   │   ├── useTable.ts         # Hook genérico de leitura reativa de tabelas Supabase
-│   │   ├── use-mobile.tsx      # Detecção responsiva de telas móveis
-│   │   └── use-toast.ts        # Hook para disparo de alertas e notificações
+│   │   ├── use-mobile.tsx      # Detecção de telas móveis e breakpoints
+│   │   └── use-toast.ts        # Disparo de notificações toast
 │   ├── integrations/
-│   │   └── supabase/           # Cliente Supabase configurado (singleton)
+│   │   └── supabase/           # Cliente Supabase singleton configurado
 │   ├── lib/
-│   │   ├── store.ts            # Interfaces TypeScript, constantes de tabelas e CRUD genérico
-│   │   ├── matriculaUtils.ts   # Utilitários de cálculo de planos (Mensal, Trimestral, Anual) e vencimento
-│   │   └── utils.ts            # Utilitários de formatação de datas (DD/MM/YYYY), máscara de CPF e classes CSS
-<<<<<<< HEAD
+│   │   ├── store.ts            # Interfaces TypeScript, constantes STORES e CRUD genérico com sanitização
+│   │   ├── matriculaUtils.ts   # Utilitários de cálculo de planos (Mensal, Trimestral, Anual) e vigência
+│   │   └── utils.ts            # Formatação de datas (DD/MM/YYYY), máscara de CPF e classes CSS
 │   ├── types/
 │   │   └── financeiro.ts       # Schemas Zod e tipos de receita por modalidade, repasse e KPIs
-=======
->>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
 │   ├── pages/
-│   │   ├── AuthPage.tsx        # Tela de login e cadastro com aviso de aprovação pendente
-│   │   ├── Dashboard.tsx       # Painel analítico com KPIs financeiros, novos alunos e 4 gráficos Recharts
-│   │   ├── AlunosPage.tsx      # Gestão e cadastro de alunos, responsáveis e observações médicas
-│   │   ├── LeadsPage.tsx       # Funil de captação de leads com conversão em aluno em 1 clique e WhatsApp
-│   │   ├── MatriculasPage.tsx  # Gestão de matrículas, planos, liberação rápida para aula e vigências
-│   │   ├── TurmasPage.tsx      # Gestão de turmas com grade de dias da semana, horários, salas e instrutores
-│   │   ├── ModalidadesPage.tsx # Catálogo de modalidades esportivas e culturais (19 pré-cadastradas)
-│   │   ├── InstrutoresPage.tsx # Cadastro do corpo docente com especialidades múltiplas (1:N) e WhatsApp
-<<<<<<< HEAD
-│   │   ├── PagamentosPage.tsx  # Gestão de lançamentos financeiros operacionais e ação rápida "Dar Baixa"
-│   │   ├── FinanceiroPage.tsx  # Painel financeiro analítico avançado, repasses de professores e receita por modalidade
-=======
-│   │   ├── PagamentosPage.tsx  # Gestão financeira, controle de mensalidades e ação rápida "Dar Baixa"
->>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
-│   │   ├── PresencasPage.tsx   # Diário de classe, chamada em lote por turma/data e filtros por instrutor
+│   │   ├── AuthPage.tsx        # Login e registro com mensagem de aprovação pendente
+│   │   ├── Dashboard.tsx       # Painel de inteligência com 5 abas especializadas por cargo
+│   │   ├── AlunosPage.tsx      # Cadastro de alunos, responsáveis, dados médicos e WhatsApp
+│   │   ├── LeadsPage.tsx       # Funil comercial com conversão em aluno em 1 clique
+│   │   ├── MatriculasPage.tsx  # Gestão de matrículas, planos, liberação de aulas e vigências
+│   │   ├── TurmasPage.tsx      # Turmas com grade horária semanal, salas, ocupação e instrutores
+│   │   ├── ModalidadesPage.tsx # Catálogo de modalidades esportivas e culturais (19 cadastradas)
+│   │   ├── InstrutoresPage.tsx # Corpo docente com especialidades múltiplas (1:N) e WhatsApp
+│   │   ├── PagamentosPage.tsx  # Lançamentos operacionais e ação rápida "Dar Baixa"
+│   │   ├── FinanceiroPage.tsx  # Painel analítico de arrecadação por modalidade e repasses
+│   │   ├── PresencasPage.tsx   # Diário de classe, chamada em lote e filtros por instrutor
 │   │   ├── AulasPage.tsx       # Grade e agendamento de aulas por turma e instrutor
-│   │   ├── UsuariosPage.tsx    # Painel de aprovação de novos cadastros, cargos e exclusão de contas
+│   │   ├── UsuariosPage.tsx    # Aprovação de cadastros, papéis de acesso e exclusão segura
 │   │   └── NotFound.tsx        # Página de erro 404
 │   ├── test/                   # Testes unitários e de integração
 │   ├── App.tsx                 # Roteamento SPA dinâmico por perfil, Suspense e QueryClient
 │   ├── main.tsx                # Ponto de entrada da aplicação
 │   └── index.css               # Estilos globais e tokens de cores Tailwind
 ├── supabase/
-│   ├── config.toml             # Configuração do projeto Supabase
-│   └── migrations/             # Histórico versionado de migrações SQL
+│   ├── config.toml             # Configuração do projeto Supabase CLI
+│   └── migrations/             # Histórico versionado de migrações SQL (10 migrações)
 ├── .env                        # Variáveis de ambiente locais (ignorado no git)
 ├── package.json
 ├── tailwind.config.ts
@@ -129,17 +124,10 @@ movimais/
 
 ### Pré-requisitos
 
-<<<<<<< HEAD
-- **Node.js** 18+ e **npm**
-- Conta e projeto configurado no **Supabase**
-
-### 1. Clonar e Instalar
-=======
 - **Node.js** 18+ e **npm** (ou **bun**)
 - Conta e projeto configurado no **Supabase**
 
 ### 1. Clonar o repositório e instalar as dependências
->>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
 
 ```powershell
 git clone <url-do-repositorio>
@@ -147,11 +135,7 @@ cd movimais
 npm install
 ```
 
-<<<<<<< HEAD
-### 2. Configurar Variáveis de Ambiente
-=======
 ### 2. Configurar as variáveis de ambiente
->>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
 
 Crie o arquivo `.env` na raiz do projeto:
 
@@ -174,18 +158,20 @@ A aplicação estará acessível em: **`http://localhost:5173`**
 
 ## 🗄️ Banco de Dados & Histórico de Migrações
 
-O banco de dados PostgreSQL é gerenciado no **Supabase** com migrações versionadas em `supabase/migrations/`:
+O banco de dados PostgreSQL é gerenciado no **Supabase** com 10 migrações versionadas em `supabase/migrations/`:
 
 | Migração | Descrição |
 |---|---|
 | `20260623184449_*.sql` | Schema completo inicial (alunos, leads, matrículas, turmas, modalidades, instrutores, pagamentos, presenças) + seed de 19 modalidades + RLS inicial |
-| `20260623185538_*.sql` | Tabelas de autenticação e perfis: `profiles` e `user_roles` |
-| `20260623185557_*.sql` | Ajustes complementares de políticas de segurança |
+| `20260623185538_*.sql` | Tabelas de segurança e autenticação: `profiles` e `user_roles` |
+| `20260623185557_*.sql` | Políticas complementares de segurança RLS |
 | `20260824222327_create_aulas_table.sql` | Criação da tabela `aulas` com FKs para turmas e instrutores, status e políticas RLS |
-| `20260825000000_approval_workflow.sql` | Enum `user_status`, tabela `notifications`, trigger `handle_new_user`, RPC `approve_user` e RPC `reject_user` |
-| `20260826000000_user_management_and_deletion.sql` | RPC `delete_user_account` para exclusão atômica de contas e regras de segurança contra auto-exclusão |
-| `20260827000000_turmas_schedule_and_instructor_modalities.sql` | Grade horária em turmas (`dias_semana`, `horario_inicio`, `horario_fim`, `sala`, `id_instrutor`), especialidades múltiplas em instrutores (`especialidades: text[]`, `id_modalidades: text[]`, `user_id`) e índices de busca |
-| `20260828000000_add_tipo_plano_to_matriculas.sql` | Adição da coluna `tipo_plano` na tabela `matriculas` (padrão `TRIMESTRAL`) |
+| `20260825000000_approval_workflow.sql` | Enum `user_status`, tabela `notifications`, trigger `handle_new_user`, RPCs `approve_user` e `reject_user` |
+| `20260826000000_user_management_and_deletion.sql` | RPC `delete_user_account` para exclusão atômica de contas e trava contra auto-exclusão |
+| `20260827000000_turmas_schedule_and_instructor_modalities.sql` | Grade horária em turmas (`dias_semana`, horários, salas, `id_instrutor`), especialidades múltiplas em instrutores (`especialidades: text[]`, `id_modalidades: text[]`, `user_id`) |
+| `20260828000000_add_tipo_plano_to_matriculas.sql` | Adição da coluna `tipo_plano` em `matriculas` (Mensal, Trimestral, Anual) |
+| `20260829000000_financial_dashboard_metrics.sql` | Views analíticas de receita/repasse e RPC agregadora `get_financial_dashboard_metrics` |
+| `20260830000000_fix_security_and_rbac_policies.sql` | Correções críticas de segurança (IDOR/BOLA) com uso de `auth.uid()` e RLS administrativo em `user_roles` |
 
 ### Aplicar Migrações via Supabase CLI
 
@@ -211,111 +197,95 @@ O sistema implementa uma camada de governança e controle de acesso baseada em p
 | Perfil | Acesso aos Módulos | Destino Inicial |
 |---|---|---|
 | **`secretaria`** | Acesso irrestrito a todos os módulos, relatórios financeiros e gestão de acessos | `/` (Dashboard) |
-<<<<<<< HEAD
-| **`coordenacao`** | Gestão de alunos, leads, matrículas, turmas, modalidades, instrutores, pagamentos, financeiro analítico, presenças, aulas e aprovação de novos usuários | `/` (Dashboard) |
-=======
-| **`coordenacao`** | Gestão de alunos, leads, matrículas, turmas, modalidades, instrutores, pagamentos, presenças, aulas e aprovação de novos usuários | `/` (Dashboard) |
->>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
-| **`instrutor`** | Acesso operacional às suas turmas, modalidades, diário de presenças e calendário de aulas | `/aulas` |
+| **`coordenacao`** | `/` (Dashboard) | Gestão de alunos, turmas, matrículas, presenças, pagamentos, dashboard analítico e aprovação de cadastros |
+| **`instrutor`** | `/aulas` | Acesso operacional às suas turmas, modalidades, diário de presenças e calendário de aulas |
 
 ### Fluxo de Novos Usuários (Approval Workflow)
 
-1. **Solicitação**: O usuário realiza o cadastro na tela `/auth`. O status inicial é definido como `pendente`.
+1. **Solicitação**: O usuário realiza o cadastro na tela `/auth`. O status inicial é registrado como `pendente`.
 2. **Notificação**: Uma notificação é gerada para a coordenação e secretaria informando o novo cadastro.
 3. **Bloqueio Provisório**: Enquanto estiver pendente, o usuário é impedido de navegar no sistema.
 4. **Aprovação / Rejeição**:
-   - A equipe administrativa acessa **/usuarios**, onde visualiza a aba com badge contador de pendências.
-   - Ao aprovar, define obrigatoriamente o cargo (`secretaria`, `coordenacao` ou `instrutor`) e, se for instrutor, seleciona as especialidades e modalidades lecionadas.
-   - Em caso de recusa, o motivo da rejeição é registrado.
-   - Administradores também podem remover contas em definitivo via exclusão atômica.
+   - A equipe administrativa acessa **/usuarios**, onde visualiza a aba com badge contador pulsante de pendências.
+   - Ao aprovar, define obrigatoriamente o cargo (`secretaria`, `coordenacao` ou `instrutor`) e, se for instrutor, associa as modalidades e especialidades.
+   - Em caso de recusa, o motivo da rejeição é registrado via modal.
+   - Administradores também podem remover contas em definitivo via RPC `delete_user_account` com segurança contra auto-exclusão.
 
 ---
 
 ## 📋 Módulos e Funcionalidades
 
-### 📊 Dashboard
-- **KPIs Principais**: Total de Alunos, Matrículas Ativas, Leads no Funil, Pagamentos Pendentes, Receita Total Recebida e Novos Alunos no Mês.
-- **Gráficos Analíticos (Recharts)**:
-  - Comparativo de Receita Prevista vs. Recebida por Mês (Gráfico de Barras com Tooltip personalizado em padrão escuro e formatação `DD/MM/YYYY`).
-  - Distribuição de Alunos por Modalidade (Gráfico de Pizza interativo).
-  - Evolução de Novos Alunos ao longo do tempo (Gráfico de Área).
-  - Matrículas por Status.
-- **Feed Recente**: Visualização das últimas matrículas registradas com badges semânticos.
+### 📊 Painel de Inteligência & Dashboard Multi-Perfil (`/`)
+- **5 Visões Analíticas Especializadas**:
+  1. **Geral (360°)**: Hero KPIs de alunos ativos, ocupação (meta 500 alunos), receita realizada vs prevista, funil comercial com `VisualFunnel`, balanço líquido de crescimento com `DivergentBarChart` e turmas em alerta de ocupação (<50%).
+  2. **Financeiro (Controladoria)**: Fluxo de caixa mensal divergente (entradas vs saídas), receita por modalidade ranqueada, métodos de pagamento (PIX, Cartão, Boleto), impacto de bolsas sociais e cobrança de inadimplência por turma com link direto para WhatsApp.
+  3. **Coordenação (Pedagógico & Retenção)**: Assiduidade média por turma (meta 75%), causa-raiz de cancelamentos (Pareto), mapa de calor semanal de frequência (`AttendanceHeatmap`), cumprimento de grade mensal (`BulletProgressBar`) e busca ativa de faltas via WhatsApp.
+  4. **Instrutor (Sala de Aula)**: Painel focado nas turmas sob responsabilidade do professor, alunos ativos, taxa de lotação, evolução da assiduidade com `RadialGauge` e avisos de acolhimento para a próxima aula (com estimativa de repasse ocultável).
+  5. **Comunicação (Marketing & Aquisição)**: Funil multicanal (alcance ➔ cliques ➔ leads ➔ matrículas), eficiência por canal de origem (Instagram, Indicação [líder com 71% de conversão], WhatsApp, Eventos), demanda reprimida por modalidade e termômetro de reputação comunitária (92%).
 
-### 👥 Alunos
-- Cadastro completo: dados pessoais, endereço padronizado (Brasília-DF), contato e responsável legal para menores.
+### 👥 Alunos (`/alunos`)
+- Cadastro completo: dados pessoais, CPF com validação matemática e máscara, endereço do DF, contato e responsável legal para menores.
 - Autorização de uso de imagem, aceite de comunicações e observações médicas.
 - **Ação rápida WhatsApp**: Botão de contato direto via WhatsApp com mensagem pré-formatada.
-- Visualização detalhada de dados do aluno em modal dedicado.
+- Modal dedicado para visualização completa de dados cadastrais.
 
-### 🎯 Leads & Captação
-- Funil de prospecção comercial: origem (WhatsApp, Instagram, Presencial, Indicação), modalidade de interesse e data do último contato.
+### 🎯 Leads & Captação (`/leads`)
+- Funil de prospecção comercial: canal de origem (WhatsApp, Instagram, Presencial, Indicação), modalidade de interesse e data do último contato.
 - **Conversão em 1 Clique**: Transforma o lead diretamente em um registro na base de alunos.
-- Contato rápido via WhatsApp integrado.
-- Métricas de leads novos, em atendimento e taxa de conversão global.
+- Contato rápido integrado via WhatsApp.
 
-### 📋 Matrículas
+### 📋 Matrículas (`/matriculas`)
 - Vínculo direto entre Aluno ↔ Modalidade ↔ Turma.
-- **Tipos de Planos**: `MENSAL` (1 mês), `TRIMESTRAL` (3 meses) e `ANUAL` (12 meses).
-- **Cálculo Automático de Vigência**: Determina a data de término com base no plano selecionado e estende em +30 dias para status de trancamento/suspensão (`SUSPENSA_30_DIAS` / `TRANCADA_JUSTIFICADA`).
-- **Liberação Rápida para Aula**: Switch interativo para liberar ou revogar o acesso do aluno às aulas.
+- **Tipos de Planos**: `MENSAL` (1 mês), `TRIMESTRAL` (3 meses, padrão) e `ANUAL` (12 meses).
+- **Cálculo Automático de Vigência**: Determina a data de término com base no plano contratado e estende em +30 dias para status de trancamento/suspensão (`SUSPENSA_30_DIAS` / `TRANCADA_JUSTIFICADA`).
+- **Liberação Rápida para Aula**: Switch interativo para liberar ou suspender o acesso do aluno às aulas.
 - Formas de pagamento (PIX, Boleto, Cartão de Crédito, Dinheiro, Transferência).
 
-### 🏃 Turmas & Grade Horária
+### 🏃 Turmas & Grade Horária (`/turmas`)
 - Seleção de dias da semana (`Segunda`, `Terça`, `Quarta`, `Quinta`, `Sexta`, `Sábado`, `Domingo`).
 - Horário de início e término (`horario_inicio`, `horario_fim`), capacidade máxima e sala.
 - Atribuição de instrutor responsável.
 - Alternância de visualização entre **Cards Visuais** e **Tabela Completa**.
 - Indicadores de ocupação em tempo real e vagas disponíveis.
 
-### 🎨 Modalidades
+### 🎨 Modalidades (`/modalidades`)
 - Catálogo com **19 modalidades pré-cadastradas** (Pilates 2X/3X, Karatê, Ballet, Jiu-Jitsu, Ginástica Rítmica, Funcional Power, Yoga, etc.).
 - Áreas temáticas (Artes Marciais, Dança, Fitness, Bem-Estar, Artes, Artesanato, Esporte).
 - Definição de valor padrão de referência e controle de status.
 
-### 👨‍🏫 Instrutores
+### 👨‍🏫 Instrutores (`/instrutores`)
 - Cadastro completo do corpo docente: CPF, telefone, e-mail e função (Principal / Substituto).
 - **Múltiplas Especialidades (1:N)**: Associação de múltiplas modalidades por instrutor.
 - Vinculação com o usuário de acesso (`user_id`).
 - Contato direto via WhatsApp.
 
-<<<<<<< HEAD
-### 💰 Pagamentos (Lançamentos Operacionais)
+### 💰 Pagamentos Operacionais (`/pagamentos`)
 - Lançamentos vinculados por matrícula e aluno.
 - Tipos de lançamento: Mensalidade, Taxa de Matrícula, Material, Reposição, Ajuste.
 - **Ação "Dar Baixa"**: Quitação instantânea com registro automático da data de pagamento e valor recebido.
-- Indicadores operacionais de receita recebida, valores pendentes, inadimplência e taxa de adimplência.
+- Indicadores operacionais de receita recebida, valores pendentes e taxa de adimplência.
 
 ### 💳 Painel Financeiro Analítico & Repasses (`/financeiro`)
 - **Arrecadação Total por Modalidade**: Soma detalhada de todas as entradas financeiras (mensalidades + taxas de matrícula + materiais + outros), com contagem de transações e alunos ativos.
 - **Repasse de Professores / Instrutores (Regra de Ouro)**:
   - O cálculo de repasse contabiliza **estritamente pagamentos categorizados como `MENSALIDADE`**.
   - Taxas de matrícula, materiais, multas e reposições **não entram** no repasse aos professores, sendo retidas pela instituição e auditadas na coluna de taxas excluídas.
-- **Evolução Financeira Comparativa**: Gráficos analíticos de receita mensal comparando Mensalidades vs. Taxas/Outros vs. Repasses a Professores.
-- **Distribuição de Matrículas**: Gráfico de pizza interativo com percentuais de participação de cada modalidade.
-- **Filtros Temporais Flexíveis**: Mês Atual, 3 Meses, 6 Meses, Ano Atual e Geral.
+- **Gráficos Analíticos**: Barras empilhadas de receita por modalidade, Donut de distribuição de matrículas ativas e Barras horizontais de repasse docente.
+- **Filtros Temporais Flexíveis**: Mês Atual, 3 Meses, 6 Meses, Ano Atual, Geral e Intervalo Personalizado (DD/MM/AAAA).
 - **Exportação Consolidada**: Download de relatório analítico completo em formato CSV formatado para Excel (UTF-8 com BOM).
-- **Validação Rigorosa com Zod**: Tipagem e sanitização dos dados financeiros via schemas Zod (`src/types/financeiro.ts`).
+- **Validação Rigorosa com Zod**: Tipagem e validação dos dados financeiros via schemas Zod (`src/types/financeiro.ts`).
 
-=======
-### 💰 Pagamentos & Financeiro
-- Lançamentos vinculados por matrícula e aluno.
-- Tipos de lançamento: Mensalidade, Taxa de Matrícula, Material, Reposição, Ajuste.
-- **Ação "Dar Baixa"**: Quitação instantânea com registro automático da data de pagamento e valor recebido.
-- Indicadores de receita recebida, valores pendentes, inadimplência e taxa de adimplência.
-
->>>>>>> 1238a5f0c24d02bb5aedaabef84666d89566bb26
-### ✅ Presenças (Diário de Classe)
+### ✅ Presenças (Diário de Classe) (`/presencas`)
 - Registro de chamada por turma, data e aula.
+- Detecção automática do dia da semana a partir da data informada.
 - Filtros inteligentes por modalidade e instrutor (instrutores visualizam diretamente suas respectivas turmas).
 - Botões de seleção em massa: **Marcar Todos Presentes** e **Marcar Todos Ausentes**.
-- Detecção automática do dia da semana a partir da data da aula.
 
-### 🗓️ Aulas
+### 🗓️ Aulas (`/aulas`)
 - Calendário e controle de aulas agendadas, realizadas e canceladas.
 - Rota de destino inicial direta para instrutores.
 
-### 🛡️ Gestão de Usuários & Acessos
+### 🛡️ Gestão de Usuários & Acessos (`/usuarios`)
 - Painel de aprovação com 3 abas: **Pendentes**, **Ativos & Permissões** e **Todos**.
 - Modal de aprovação com seleção de cargo e especialidades para instrutores.
 - Modal de rejeição com registro de justificativa.

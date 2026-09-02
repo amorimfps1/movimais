@@ -41,6 +41,7 @@ import {
   Dumbbell,
   Check,
   Pencil,
+  X,
 } from "lucide-react";
 import { cn, formatDateToBR } from "@/lib/utils";
 import { generateId, STORES, type Modalidade, type Instrutor } from "@/lib/store";
@@ -699,13 +700,22 @@ export default function UsuariosPage() {
 
           {/* Campo de Busca */}
           <div className="relative max-w-md min-w-[240px]">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <Input
               placeholder="Buscar por nome, e-mail, cargo ou modalidade..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9.5 bg-background/60 border-white/10 rounded-xl text-xs sm:text-sm h-10"
+              className="pl-9 pr-8 bg-background/60 border-white/10 rounded-xl text-xs sm:text-sm h-10"
             />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-full"
+                title="Limpar busca"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
 

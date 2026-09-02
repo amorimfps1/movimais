@@ -24,28 +24,28 @@ describe('CpfInput', () => {
     expect(screen.getByPlaceholderText('000.000.000-00')).toBeInTheDocument();
   });
 
-  it('Displays "valido" when given a valid complete CPF value', () => {
+  it('Displays "Válido" when given a valid complete CPF value', () => {
     render(<CpfInputWrapper />);
     const input = screen.getByPlaceholderText('000.000.000-00');
     fireEvent.change(input, { target: { value: '529.982.247-25' } });
-    expect(screen.getByText('valido')).toBeInTheDocument();
-    expect(screen.getByText('valido')).toHaveClass('text-success');
+    expect(screen.getByText('Válido')).toBeInTheDocument();
+    expect(screen.getByText('Válido')).toHaveClass('text-success');
   });
 
-  it('Displays "invalido" when given an invalid complete CPF value', () => {
+  it('Displays "Inválido" when given an invalid complete CPF value', () => {
     render(<CpfInputWrapper />);
     const input = screen.getByPlaceholderText('000.000.000-00');
     fireEvent.change(input, { target: { value: '111.111.111-11' } });
-    expect(screen.getByText('invalido')).toBeInTheDocument();
-    expect(screen.getByText('invalido')).toHaveClass('text-destructive');
+    expect(screen.getByText('Inválido')).toBeInTheDocument();
+    expect(screen.getByText('Inválido')).toHaveClass('text-destructive');
   });
 
   it('Does not show validation indicator for incomplete CPF', () => {
     render(<CpfInputWrapper />);
     const input = screen.getByPlaceholderText('000.000.000-00');
     fireEvent.change(input, { target: { value: '123' } });
-    expect(screen.queryByText('valido')).not.toBeInTheDocument();
-    expect(screen.queryByText('invalido')).not.toBeInTheDocument();
+    expect(screen.queryByText('Válido')).not.toBeInTheDocument();
+    expect(screen.queryByText('Inválido')).not.toBeInTheDocument();
   });
 
   it('Calls onChange with correct (raw, masked, valid) arguments when user types', () => {
@@ -74,7 +74,8 @@ describe('CpfInput', () => {
     render(<CpfInputWrapper showValidation={false} />);
     const input = screen.getByPlaceholderText('000.000.000-00');
     fireEvent.change(input, { target: { value: '111.111.111-11' } });
-    expect(screen.queryByText('invalido')).not.toBeInTheDocument();
+    expect(screen.queryByText('Válido')).not.toBeInTheDocument();
+    expect(screen.queryByText('Inválido')).not.toBeInTheDocument();
     expect(input).not.toHaveClass('border-destructive');
   });
 });

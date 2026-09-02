@@ -94,3 +94,27 @@ export function formatDateToBR(dateValue?: string | Date | number | null): strin
 
   return "—";
 }
+
+/** Aplica a máscara DD/MM/YYYY enquanto o usuário digita */
+export function maskDate(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+/** Converte data brasileira DD/MM/YYYY para formato ISO YYYY-MM-DD para comparações */
+export function parseBRDateToISO(brDate: string): string {
+  if (!brDate) return "";
+  const digits = brDate.replace(/\D/g, "");
+  if (digits.length !== 8) return "";
+  const day = digits.slice(0, 2);
+  const month = digits.slice(2, 4);
+  const year = digits.slice(4, 8);
+  const d = parseInt(day, 10);
+  const m = parseInt(month, 10);
+  const y = parseInt(year, 10);
+  if (m < 1 || m > 12 || d < 1 || d > 31 || y < 1900 || y > 2100) return "";
+  return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+}
+

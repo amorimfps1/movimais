@@ -248,12 +248,12 @@ export default function DataTable<T extends Record<string, any>>({
           <div className="flex items-center gap-2.5 flex-1 min-w-[260px] flex-wrap">
             {searchKeys && searchKeys.length > 0 && (
               <div className="relative flex-1 min-w-[220px] max-w-md">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                 <Input
                   placeholder={searchPlaceholder}
                   value={search}
                   onChange={e => { setSearch(e.target.value); setPage(1); }}
-                  className="pl-9.5 pr-8 bg-background/60 border-white/10 focus-visible:ring-primary/50 text-xs sm:text-sm h-9 rounded-xl"
+                  className="pl-9 pr-8 bg-background/60 border-white/10 focus-visible:ring-primary/50 text-xs sm:text-sm h-9 rounded-xl"
                 />
                 {search && (
                   <button

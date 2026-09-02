@@ -6,7 +6,7 @@ export interface Aluno {
   id: string;
   nome_completo: string;
   cpf: string;
-  data_nascimento: string;
+  data_nascimento?: string | null;
   telefone: string;
   email: string;
   endereco: string;
@@ -21,14 +21,14 @@ export interface Aluno {
   autorizacao_imagem: boolean;
   aceita_comunicacao: boolean;
   observacoes_medicas: string;
-  data_cadastro: string;
+  data_cadastro?: string | null;
   origem_primeiro_contato: string;
   status_cadastral: string;
 }
 
 export interface Lead {
   id: string;
-  data_entrada: string;
+  data_entrada?: string | null;
   nome: string;
   cpf: string;
   telefone: string;
@@ -38,7 +38,7 @@ export interface Lead {
   turma_interesse: string;
   responsavel_atendimento: string;
   status_lead: string;
-  data_ultimo_contato: string;
+  data_ultimo_contato?: string | null;
   motivo_nao_conversao: string;
   observacoes: string;
   converteu_em_aluno: boolean;
@@ -51,13 +51,13 @@ export interface Matricula {
   id_turma: string;
   tipo_matricula: string;
   tipo_plano?: string;
-  data_inicio: string;
-  data_fim_prevista: string;
+  data_inicio?: string | null;
+  data_fim_prevista?: string | null;
   status_matricula: string;
   valor_final: number;
   forma_pagamento: string;
   liberado_para_aula: boolean;
-  data_criacao: string;
+  data_criacao?: string | null;
   observacoes: string;
 }
 
@@ -99,15 +99,15 @@ export interface Instrutor {
 
 export interface Pagamento {
   id: string;
-  id_matricula: string;
-  id_aluno: string;
+  id_matricula?: string | null;
+  id_aluno?: string | null;
   tipo_lancamento: string;
   mes_referencia: number;
   ano_referencia: number;
-  data_vencimento: string;
+  data_vencimento?: string | null;
   valor_previsto: number;
   valor_pago: number;
-  data_pagamento: string;
+  data_pagamento?: string | null;
   status_pagamento: string;
   forma_pagamento: string;
 }
@@ -116,8 +116,8 @@ export interface Presenca {
   id: string;
   data_aula: string;
   id_turma: string;
-  id_matricula: string;
-  id_aluno: string;
+  id_matricula?: string | null;
+  id_aluno?: string | null;
   presenca: boolean;
   tipo_registro: string;
 }
@@ -151,6 +151,39 @@ export function generateId() {
   return crypto.randomUUID().slice(0, 8).toUpperCase();
 }
 
+/**
+ * Sanitiza o payload antes de enviar para o Supabase / PostgreSQL.
+ * Converte strings vazias em campos de data ou foreign keys para null,
+ * evitando erros do tipo 'invalid input syntax for type date: ""'.
+ */
+export function sanitizePayload<T>(item: T): T {
+  if (!item || typeof item !== "object") return item;
+  const copy: any = Array.isArray(item) ? [...item] : { ...item };
+
+  for (const [key, value] of Object.entries(copy)) {
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      // Campos de data: data_*, created_at, updated_at
+      if (
+        (key.startsWith("data_") || key === "created_at" || key === "updated_at") &&
+        trimmed === ""
+      ) {
+        copy[key] = null;
+      }
+      // Foreign keys e IDs nulos: id_* (exceto a chave primária 'id'), user_id
+      else if (
+        (key.startsWith("id_") || key === "user_id") &&
+        trimmed === ""
+      ) {
+        copy[key] = null;
+      }
+    } else if (typeof value === "number" && isNaN(value)) {
+      copy[key] = null;
+    }
+  }
+  return copy;
+}
+
 // ============ Generic CRUD (async) ============
 export async function getAll<T>(table: string): Promise<T[]> {
   const { data, error } = await supabase.from(table as any).select("*").order("created_at", { ascending: false });
@@ -171,7 +204,8 @@ export async function getById<T>(table: string, id: string): Promise<T | undefin
 }
 
 export async function create<T>(table: string, item: T): Promise<void> {
-  const { error } = await supabase.from(table as any).insert(item as any);
+  const sanitized = sanitizePayload(item);
+  const { error } = await supabase.from(table as any).insert(sanitized as any);
   if (error) {
     console.error(`[create ${table}]`, error);
     throw error;
@@ -179,7 +213,8 @@ export async function create<T>(table: string, item: T): Promise<void> {
 }
 
 export async function update<T extends { id: string }>(table: string, item: T): Promise<void> {
-  const { id, ...rest } = item as any;
+  const sanitized = sanitizePayload(item);
+  const { id, ...rest } = sanitized as any;
   const { error } = await supabase.from(table as any).update(rest).eq("id", id);
   if (error) {
     console.error(`[update ${table}]`, error);

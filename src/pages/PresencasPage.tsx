@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   CheckCircle2, XCircle, ClipboardCheck, Loader2, Users, Search,
-  Sparkles, Calendar, Clock, MapPin, Dumbbell, UserCog, Check, Filter, ChevronRight
+  Sparkles, Calendar, Clock, MapPin, Dumbbell, UserCog, Check, Filter, ChevronRight, X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { generateId, STORES, type Turma, type Aluno, type Matricula, type Presenca, type Instrutor, type Modalidade, type Aula } from "@/lib/store";
@@ -700,13 +700,22 @@ export default function PresencasPage() {
           {/* Busca Rápida de Aluno */}
           {rows.length > 6 && (
             <div className="relative max-w-sm">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
               <Input
                 placeholder="Filtrar aluno na lista..."
                 value={searchAluno}
                 onChange={e => setSearchAluno(e.target.value)}
-                className="pl-9 bg-background/60 border-white/10 rounded-xl text-xs h-9"
+                className="pl-9 pr-8 bg-background/60 border-white/10 rounded-xl text-xs h-9"
               />
+              {searchAluno && (
+                <button
+                  onClick={() => setSearchAluno("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded-full"
+                  title="Limpar busca"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
           )}
 
