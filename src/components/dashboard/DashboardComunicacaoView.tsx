@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
-import { STORES, type Lead, type Matricula, type Modalidade } from "@/lib/store";
+import { STORES, type Lead } from "@/lib/store";
 import { useTable } from "@/hooks/useTable";
 import { CustomChartTooltip } from "./CustomChartTooltips";
 import VisualFunnel from "./VisualFunnel";
@@ -30,43 +30,48 @@ const COLORS = {
 
 export default function DashboardComunicacaoView() {
   const { data: leads } = useTable<Lead>(STORES.LEADS);
-  const { data: matriculas } = useTable<Matricula>(STORES.MATRICULAS);
-  const { data: modalidades } = useTable<Modalidade>(STORES.MODALIDADES);
-
-  const totalLeadsCount = leads.length || 48;
-  const matriculasConvertidas = leads.filter(l => l.converteu_em_aluno || l.status_lead === "CONVERTIDO").length || 19;
-  const taxaConversaoGeral = Math.round((matriculasConvertidas / (totalLeadsCount || 1)) * 100);
+  const totalLeadsCount = leads.length;
+  const convertidosEmAlunos = leads.filter(l => l.converteu_em_aluno || l.status_lead === "CONVERTIDO").length;
+  const emAtendimento = leads.filter(l => l.status_lead === "EM_ATENDIMENTO" || l.status_lead === "AGUARDANDO_RETORNO").length;
+  const taxaConversaoGeral = totalLeadsCount > 0 ? Math.round((convertidosEmAlunos / totalLeadsCount) * 100) : 0;
+  const agora = new Date();
+  const novosNoMes = leads.filter(l => {
+    const data = l.data_entrada;
+    if (!data) return false;
+    const inicio = String(data).slice(0, 7);
+    return inicio === `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}`;
+  }).length;
 
   // Eficiência por Canal de Aquisição (Leads vs Matrículas)
   const canaisAquisicao = useMemo(() => {
-    return [
-      { canal: "Instagram", leads: 22, matriculas: 7, taxa: "32%" },
-      { canal: "Indicação de Alunos", leads: 14, matriculas: 10, taxa: "71%" },
-      { canal: "WhatsApp / Site", leads: 8, matriculas: 3, taxa: "38%" },
-      { canal: "Eventos Comunitários", leads: 6, matriculas: 4, taxa: "67%" },
-    ];
-  }, []);
+    const canais = new Map<string, { canal: string; leads: number; convertidos: number }>();
+    leads.forEach(l => {
+      const canal = l.canal_origem?.trim() || "Não informado";
+      const item = canais.get(canal) || { canal, leads: 0, convertidos: 0 };
+      item.leads += 1;
+      if (l.converteu_em_aluno || l.status_lead === "CONVERTIDO") item.convertidos += 1;
+      canais.set(canal, item);
+    });
+    return [...canais.values()].sort((a, b) => b.leads - a.leads);
+  }, [leads]);
 
   // Funil de Aquisição Multicanal para VisualFunnel
   const funilAquisicaoStages = useMemo(() => {
     return [
-      { label: "1. Alcance de Campanhas", count: 4260, sublabel: "Pessoas impactadas nas redes", color: COLORS.sky },
-      { label: "2. Cliques no Link / Anúncios", count: 280, sublabel: "Visitas à página de inscrição", color: COLORS.indigo },
-      { label: "3. Leads e Contatos Gerados", count: totalLeadsCount, sublabel: "Formulários e mensagens recebidas", color: COLORS.purple },
-      { label: "4. Matrículas Concretizadas", count: matriculasConvertidas, sublabel: "Alunos com cadastro ativo", color: COLORS.emerald },
+      { label: "1. Leads Cadastrados", count: totalLeadsCount, sublabel: "Interessados registrados", color: COLORS.sky },
+      { label: "2. Convertidos em Alunos", count: convertidosEmAlunos, sublabel: "Conversão marcada no cadastro do lead", color: COLORS.emerald },
     ];
-  }, [totalLeadsCount, matriculasConvertidas]);
+  }, [totalLeadsCount, convertidosEmAlunos]);
 
   // Demanda e Procura por Modalidade
   const interessePorModalidade = useMemo(() => {
-    return [
-      { modalidade: "Dança / Ballet", procura: 38, vagasLivres: 8 },
-      { modalidade: "Pilates", procura: 32, vagasLivres: 4 },
-      { modalidade: "Karatê / Lutas", procura: 24, vagasLivres: 12 },
-      { modalidade: "Música / Violão", procura: 18, vagasLivres: 15 },
-      { modalidade: "Condicionamento", procura: 15, vagasLivres: 10 },
-    ];
-  }, []);
+    const counts = new Map<string, number>();
+    leads.forEach(l => {
+      const nome = l.modalidade_interesse?.trim();
+      if (nome) counts.set(nome, (counts.get(nome) || 0) + 1);
+    });
+    return [...counts.entries()].map(([modalidade, procura]) => ({ modalidade, procura })).sort((a, b) => b.procura - a.procura).slice(0, 5);
+  }, [leads]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -74,13 +79,11 @@ export default function DashboardComunicacaoView() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Novos Leads no Mês"
-          value={totalLeadsCount}
+          value={novosNoMes}
           icon={UserPlus}
           variant="info"
           badge="Aquisição"
-          trend="+28% em relação ao mês anterior"
-          trendType="positive"
-          target="Meta do Mês: 50 contatos"
+          target="Pela data de entrada registrada"
         />
 
         <StatCard
@@ -88,33 +91,27 @@ export default function DashboardComunicacaoView() {
           value={`${taxaConversaoGeral}%`}
           icon={Target}
           variant="success"
-          badge="Alta Eficiência"
+          badge="Leads cadastrados"
           progress={taxaConversaoGeral}
-          trend="Indicação é o canal líder (71% conv.)"
-          trendType="positive"
-          target="Benchmark: > 30%"
+          target="Conversão em cadastro de aluno"
         />
 
         <StatCard
-          title="Matrículas via Mídia"
-          value={matriculasConvertidas}
+          title="Convertidos em Alunos"
+          value={convertidosEmAlunos}
           icon={CheckCircle2}
           variant="primary"
           badge="Alunos Convertidos"
-          trend={`R$ ${(matriculasConvertidas * 120).toLocaleString("pt-BR")} em novas receitas`}
-          trendType="positive"
-          target="Retorno Imediato"
+          target="Matrícula não vinculada ao lead"
         />
 
         <StatCard
-          title="Satisfação Comunitária"
-          value="9.2 / 10"
+          title="Em Atendimento"
+          value={emAtendimento}
           icon={Award}
           variant="purple"
-          badge="Excelente Reputação"
-          trend="Baseado em 84 avaliações do projeto"
-          trendType="positive"
-          target="Comunidade Engajada"
+          badge="Acompanhamento"
+          target="Leads aguardando conclusão"
         />
       </div>
 
@@ -124,13 +121,13 @@ export default function DashboardComunicacaoView() {
         <div className="rounded-2xl border border-white/10 bg-card/60 p-6 backdrop-blur-xl lg:col-span-6 space-y-4 shadow-lg flex flex-col justify-between">
           <VisualFunnel
             title="Funil de Aquisição Multicanal"
-            subtitle="Do alcance das campanhas até a matrícula efetivada"
+            subtitle="Do cadastro do interessado à conversão em aluno"
             stages={funilAquisicaoStages}
             unit="pessoas"
           />
 
           <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>Conversão Lead ➡️ Matrícula: <strong>{taxaConversaoGeral}%</strong></span>
+            <span>Conversão em aluno: <strong>{taxaConversaoGeral}%</strong></span>
             <Link to="/leads" className="text-primary hover:underline font-medium">
               Ver Todos os Leads
             </Link>
@@ -145,12 +142,10 @@ export default function DashboardComunicacaoView() {
                 Eficiência por Canal de Origem
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Comparativo entre contatos gerados e matrículas fechadas
+                Comparativo entre contatos gerados e conversões em alunos
               </p>
             </div>
-            <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20">
-              Top Canal: Indicação (71%)
-            </span>
+            <span className="text-xs text-muted-foreground">{canaisAquisicao.length} canais registrados</span>
           </div>
 
           <ResponsiveContainer width="100%" height={230}>
@@ -160,7 +155,7 @@ export default function DashboardComunicacaoView() {
               <YAxis tick={{ fill: "#d4d4d8", fontSize: 11 }} axisLine={false} tickLine={false} />
               <Tooltip cursor={false} content={<CustomChartTooltip />} />
               <Bar dataKey="leads" name="Leads Gerados" fill="#0ea5e9" radius={[6, 6, 0, 0]} opacity={0.7} />
-              <Bar dataKey="matriculas" name="Matrículas Fechadas" fill="#10b981" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="convertidos" name="Convertidos em Alunos" fill="#10b981" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
 
@@ -172,7 +167,7 @@ export default function DashboardComunicacaoView() {
               </span>
               <span className="flex items-center gap-1.5 text-white font-medium">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shadow-sm" />
-                Matrículas Fechadas
+                Convertidos em Alunos
               </span>
             </div>
             <Link to="/leads" className="text-zinc-300 hover:text-white flex items-center gap-1 text-[11px]">
@@ -191,11 +186,12 @@ export default function DashboardComunicacaoView() {
               Demanda & Procura por Modalidade
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Identificação de turmas com demanda reprimida vs vagas disponíveis
+              Interesses informados pelos leads
             </p>
           </div>
 
           <div className="space-y-3 my-auto">
+            {interessePorModalidade.length === 0 && <p className="text-xs text-muted-foreground">Ainda não há interesses por modalidade registrados.</p>}
             {interessePorModalidade.map((item, idx) => (
               <div key={idx} className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
@@ -204,9 +200,6 @@ export default function DashboardComunicacaoView() {
                   </span>
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-sky-400">{item.procura} interessados</span>
-                    <span className="text-[10px] text-emerald-300 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                      {item.vagasLivres} vagas
-                    </span>
                   </div>
                 </div>
                 <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
@@ -220,24 +213,19 @@ export default function DashboardComunicacaoView() {
           </div>
 
           <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>Oportunidade: Abrir novas turmas de Dança & Pilates</span>
+            <span>Procura declarada pelos interessados</span>
             <Link to="/turmas" className="text-primary hover:underline font-medium">
               Abrir Turma
             </Link>
           </div>
         </div>
 
-        {/* Gauge de Satisfação / Reputação (4 Colunas) */}
+        {/* Pesquisas ainda não são coletadas pelo produto */}
         <div className="lg:col-span-4">
-          <RadialGauge
-            title="Termômetro de Reputação"
-            subtitle="Avaliação da comunidade escolar"
-            value={92}
-            unit="%"
-            target={85}
-            targetLabel="Meta"
-            statusText="Altíssima Satisfação"
-          />
+          <div className="h-full rounded-2xl border border-white/10 bg-card/60 p-6 flex flex-col justify-center gap-2">
+            <h3 className="text-sm font-semibold">Satisfação Comunitária</h3>
+            <p className="text-xs text-muted-foreground">Ainda não há pesquisas de satisfação registradas no Movi+.</p>
+          </div>
         </div>
       </div>
     </div>

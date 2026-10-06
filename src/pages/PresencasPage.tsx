@@ -10,7 +10,7 @@ import {
   Sparkles, Calendar, Clock, MapPin, Dumbbell, UserCog, Check, Filter, ChevronRight, X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { generateId, STORES, type Turma, type Aluno, type Matricula, type Presenca, type Instrutor, type Modalidade, type Aula } from "@/lib/store";
+import { STORES, type Turma, type Aluno, type Matricula, type Presenca, type Instrutor, type Modalidade, type Aula } from "@/lib/store";
 import { useTable } from "@/hooks/useTable";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,10 +19,9 @@ import { formatDateToBR } from "@/lib/utils";
 const DIAS_SEMANA_MAP = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
 interface PresencaRow {
-  aluno: Aluno;
-  matricula: Matricula;
-  presenca: boolean;
-  existingId: string | null;
+  aluno: Pick<Aluno, "id" | "nome_completo">;
+  matricula: Pick<Matricula, "id" | "id_aluno" | "id_turma" | "status_matricula" | "liberado_para_aula">;
+  presenca: boolean | null;
 }
 
 export default function PresencasPage() {
@@ -30,8 +29,8 @@ export default function PresencasPage() {
   const { user, isAdmin, isInstrutor, instrutorId: authInstrutorId, especialidades: authEspecialidades } = useAuth();
 
   const { data: turmas } = useTable<Turma>(STORES.TURMAS);
-  const { data: alunos } = useTable<Aluno>(STORES.ALUNOS);
-  const { data: matriculas } = useTable<Matricula>(STORES.MATRICULAS);
+  const { data: alunos } = useTable<Pick<Aluno, "id" | "nome_completo">>(isAdmin ? STORES.ALUNOS : STORES.ALUNOS_DIARIO);
+  const { data: matriculas } = useTable<PresencaRow["matricula"]>(isAdmin ? STORES.MATRICULAS : STORES.MATRICULAS_DIARIO);
   const { data: instrutores } = useTable<Instrutor>(STORES.INSTRUTORES);
   const { data: modalidades } = useTable<Modalidade>(STORES.MODALIDADES);
   const { data: aulas, reload: reloadAulas } = useTable<Aula>(STORES.AULAS);
@@ -132,6 +131,11 @@ export default function PresencasPage() {
   const [chamadaAberta, setChamadaAberta] = useState(false);
   const { toast } = useToast();
 
+  const podeFazerChamada = (turma: Turma | undefined, data: string) =>
+    isTurmaAssignedToInstrutor(turma) || !!currentInstrutor && aulas.some(a =>
+      a.id_turma === turma?.id && a.data_aula === data && a.id_instrutor === currentInstrutor.id
+    );
+
   // Dia da semana calculado da data selecionada
   const diaSemanaSelecionado = useMemo(() => {
     if (!dataAula) return "";
@@ -160,11 +164,17 @@ export default function PresencasPage() {
     }
   }, [searchParams, turmas.length, matriculas.length]);
 
-  const setHoje = () => setDataAula(new Date().toISOString().split("T")[0]);
+  const selecionarData = (data: string) => {
+    setDataAula(data);
+    setChamadaAberta(false);
+    setRows([]);
+  };
+
+  const setHoje = () => selecionarData(new Date().toISOString().split("T")[0]);
   const setOntem = () => {
     const d = new Date();
     d.setDate(d.getDate() - 1);
-    setDataAula(d.toISOString().split("T")[0]);
+    selecionarData(d.toISOString().split("T")[0]);
   };
 
   // Turmas filtradas para a Grade do Dia
@@ -176,7 +186,7 @@ export default function PresencasPage() {
       // Filtro por Instrutor
       let matchInstrutor = true;
       if (isInstrutor && !isAdmin) {
-        matchInstrutor = isTurmaAssignedToInstrutor(t);
+        matchInstrutor = podeFazerChamada(t, dataAula);
       } else if (filterInstrutor !== "ALL") {
         const targetInst = instrutores.find(i => i.id === filterInstrutor);
         matchInstrutor = t.id_instrutor === filterInstrutor || (targetInst?.user_id && t.id_instrutor === targetInst.user_id);
@@ -190,19 +200,19 @@ export default function PresencasPage() {
 
       return temDia && matchInstrutor && matchModalidade;
     });
-  }, [turmas, diaSemanaSelecionado, isInstrutor, isAdmin, isTurmaAssignedToInstrutor, filterInstrutor, filterModalidade, instrutores]);
+  }, [turmas, diaSemanaSelecionado, isInstrutor, isAdmin, isTurmaAssignedToInstrutor, filterInstrutor, filterModalidade, instrutores, aulas, currentInstrutor, dataAula]);
 
   // Lista de todas as turmas filtradas (geral)
   const turmasDisponiveis = useMemo(() => {
     if (isInstrutor && !isAdmin) {
-      return turmas.filter(t => isTurmaAssignedToInstrutor(t));
+      return turmas.filter(t => podeFazerChamada(t, dataAula));
     }
     if (filterInstrutor !== "ALL") {
       const targetInst = instrutores.find(i => i.id === filterInstrutor);
       return turmas.filter(t => t.id_instrutor === filterInstrutor || (targetInst?.user_id && t.id_instrutor === targetInst.user_id));
     }
     return turmas;
-  }, [turmas, isInstrutor, isAdmin, isTurmaAssignedToInstrutor, filterInstrutor, instrutores]);
+  }, [turmas, isInstrutor, isAdmin, isTurmaAssignedToInstrutor, filterInstrutor, instrutores, aulas, currentInstrutor, dataAula]);
 
   // Abrir lista de chamada
   const abrirChamadaTurma = async (targetTurmaId: string, targetData: string) => {
@@ -214,7 +224,7 @@ export default function PresencasPage() {
     // Trava de Segurança: Instrutores só podem abrir chamadas de turmas atribuídas a eles
     const targetTurma = turmas.find(t => t.id === targetTurmaId);
     if (isInstrutor && !isAdmin) {
-      const isMine = isTurmaAssignedToInstrutor(targetTurma);
+      const isMine = podeFazerChamada(targetTurma, targetData);
       if (!isMine) {
         toast({
           title: "Acesso Negado",
@@ -229,6 +239,8 @@ export default function PresencasPage() {
 
     setIdTurma(targetTurmaId);
     setDataAula(targetData);
+    setChamadaAberta(false);
+    setRows([]);
     setLoadingChamada(true);
 
     try {
@@ -241,13 +253,16 @@ export default function PresencasPage() {
       });
 
       // Busca presenças já existentes para turma + data
-      const { data: existentes } = await supabase
+      const { data: existentes, error: presencasError } = await supabase
         .from("presencas" as any)
         .select("*")
         .eq("id_turma", targetTurmaId)
-        .eq("data_aula", targetData);
+        .eq("data_aula", targetData)
+        .is("deleted_at", null);
 
-      const presencasExistentes = (existentes || []) as Presenca[];
+      if (presencasError) throw presencasError;
+
+      const presencasExistentes = (existentes || []) as unknown as Presenca[];
 
       const chamada: PresencaRow[] = matriculasTurma.map(m => {
         const aluno = alunos.find(a => a.id === m.id_aluno);
@@ -255,8 +270,7 @@ export default function PresencasPage() {
         return {
           aluno: aluno!,
           matricula: m,
-          presenca: existente ? !!existente.presenca : true, // Padrão: presente
-          existingId: existente?.id || null,
+          presenca: existente ? !!existente.presenca : null,
         };
       }).filter(r => r.aluno);
 
@@ -270,7 +284,7 @@ export default function PresencasPage() {
   };
 
   const togglePresenca = (matriculaId: string) => {
-    setRows(prev => prev.map(r => r.matricula.id === matriculaId ? { ...r, presenca: !r.presenca } : r));
+    setRows(prev => prev.map(r => r.matricula.id === matriculaId ? { ...r, presenca: r.presenca === true ? false : true } : r));
   };
 
   const marcarTodos = (presenca: boolean) => {
@@ -278,7 +292,7 @@ export default function PresencasPage() {
   };
 
   const inverterSelecao = () => {
-    setRows(prev => prev.map(r => ({ ...r, presenca: !r.presenca })));
+    setRows(prev => prev.map(r => ({ ...r, presenca: r.presenca === null ? null : !r.presenca })));
   };
 
   const salvarChamada = async () => {
@@ -287,7 +301,7 @@ export default function PresencasPage() {
     // Trava de Segurança: Instrutores só podem salvar chamadas de turmas atribuídas a eles
     const selectedTurma = turmas.find(t => t.id === idTurma);
     if (isInstrutor && !isAdmin) {
-      const isMine = isTurmaAssignedToInstrutor(selectedTurma);
+      const isMine = podeFazerChamada(selectedTurma, dataAula);
       if (!isMine) {
         toast({
           title: "Acesso Negado",
@@ -298,59 +312,23 @@ export default function PresencasPage() {
       }
     }
 
+    if (rows.length === 0 || rows.some(row => row.presenca === null)) {
+      toast({ title: "Marque todos os alunos antes de salvar", variant: "destructive" });
+      return;
+    }
+
     setSaving(true);
 
     try {
-      // 1. Salvar registros de presenças individuais
-      for (const row of rows) {
-        if (row.existingId) {
-          await supabase.from("presencas" as any).update({ presenca: row.presenca }).eq("id", row.existingId);
-        } else {
-          const payload: Presenca = {
-            id: generateId(),
-            data_aula: dataAula,
-            id_turma: idTurma,
-            id_matricula: row.matricula.id,
-            id_aluno: row.aluno.id,
-            presenca: row.presenca,
-            tipo_registro: "MANUAL",
-          };
-          await supabase.from("presencas" as any).insert(payload);
-        }
-      }
-
-      // 2. Garantir registro de aula realizada na tabela aulas
-      const { data: aulaExistente } = await supabase
-        .from("aulas" as any)
-        .select("id")
-        .eq("id_turma", idTurma)
-        .eq("data_aula", dataAula)
-        .maybeSingle();
-
-      if (aulaExistente) {
-        await supabase
-          .from("aulas" as any)
-          .update({
-            status_aula: "REALIZADA",
-            id_instrutor: selectedTurma?.id_instrutor || currentInstrutor?.id || null,
-          })
-          .eq("id", aulaExistente.id);
-      } else {
-        await supabase.from("aulas" as any).insert({
-          id: generateId(),
-          id_turma: idTurma,
-          id_instrutor: selectedTurma?.id_instrutor || currentInstrutor?.id || null,
-          data_aula: dataAula,
-          horario_inicio: selectedTurma?.horario_inicio || "08:00:00",
-          horario_fim: selectedTurma?.horario_fim || "09:00:00",
-          status_aula: "REALIZADA",
-          observacoes: `Chamada realizada em ${formatDateToBR(dataAula)} (${rows.filter(r => r.presenca).length}/${rows.length} presentes)`,
-        });
-      }
+      const { error } = await supabase.rpc("salvar_chamada" as any, {
+        _turma_id: idTurma,
+        _data_aula: dataAula,
+        _registros: rows.map(row => ({ id_matricula: row.matricula.id, presenca: row.presenca })),
+      });
+      if (error) throw error;
 
       await reloadAulas();
-      toast({ title: "✅ Chamada salva e aula registrada com sucesso!" });
-      await abrirChamadaTurma(idTurma, dataAula);
+      toast({ title: "Chamada salva e aula concluída." });
     } catch (e: any) {
       toast({ title: "Erro ao salvar chamada", description: e.message, variant: "destructive" });
     } finally {
@@ -358,9 +336,10 @@ export default function PresencasPage() {
     }
   };
 
-  const presentes = rows.filter(r => r.presenca).length;
-  const ausentes = rows.length - presentes;
-  const pctPresenca = rows.length > 0 ? Math.round((presentes / rows.length) * 100) : 0;
+  const presentes = rows.filter(r => r.presenca === true).length;
+  const ausentes = rows.filter(r => r.presenca === false).length;
+  const pendentes = rows.length - presentes - ausentes;
+  const pctPresenca = pendentes === 0 && rows.length > 0 ? Math.round((presentes / rows.length) * 100) : null;
 
   const filteredRows = useMemo(() => {
     if (!searchAluno) return rows;
@@ -426,15 +405,16 @@ export default function PresencasPage() {
                 Data da Aula *
               </Label>
               <div className="flex items-center gap-1 text-[11px]">
-                <button onClick={setHoje} className="text-primary hover:underline font-medium">Hoje</button>
+                <button onClick={setHoje} disabled={saving} className="text-primary hover:underline font-medium">Hoje</button>
                 <span className="text-muted-foreground">&bull;</span>
-                <button onClick={setOntem} className="text-muted-foreground hover:text-foreground">Ontem</button>
+                <button onClick={setOntem} disabled={saving} className="text-muted-foreground hover:text-foreground">Ontem</button>
               </div>
             </div>
             <Input
               type="date"
               value={dataAula}
-              onChange={e => setDataAula(e.target.value)}
+              disabled={saving}
+              onChange={e => selecionarData(e.target.value)}
               className="bg-background/60 border-white/10 rounded-xl h-10 text-xs sm:text-sm font-mono"
             />
           </div>
@@ -668,8 +648,11 @@ export default function PresencasPage() {
                   <XCircle className="w-3.5 h-3.5" />
                   {ausentes} Ausentes
                 </span>
+                {pendentes > 0 && (
+                  <span className="text-xs font-semibold text-amber-400">{pendentes} sem marcação</span>
+                )}
                 <span className="text-xs font-medium text-muted-foreground ml-2">
-                  Taxa de Frequência: <strong className="text-foreground">{pctPresenca}%</strong>
+                  Taxa de Frequência: <strong className="text-foreground">{pctPresenca === null ? "—" : `${pctPresenca}%`}</strong>
                 </span>
               </div>
             </div>
@@ -688,7 +671,7 @@ export default function PresencasPage() {
               <Button
                 size="sm"
                 onClick={salvarChamada}
-                disabled={saving || rows.length === 0}
+                disabled={saving || rows.length === 0 || pendentes > 0}
                 className="rounded-xl shadow-md shadow-primary/20 text-xs gap-1.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white"
               >
                 {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
@@ -733,21 +716,27 @@ export default function PresencasPage() {
                 return (
                   <button
                     key={row.matricula.id}
+                    type="button"
+                    aria-label={`${row.aluno.nome_completo}: ${row.presenca === null ? "sem marcação" : row.presenca ? "presente" : "ausente"}. Clique para alterar.`}
                     onClick={() => togglePresenca(row.matricula.id)}
                     className={`
                       p-4 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-center justify-between gap-3 shadow-sm select-none
-                      ${row.presenca
+                      ${row.presenca === true
                         ? "bg-emerald-500/10 border-emerald-500/40 hover:bg-emerald-500/20 shadow-emerald-500/5"
-                        : "bg-rose-500/10 border-rose-500/30 hover:bg-rose-500/20 shadow-rose-500/5"
+                        : row.presenca === false
+                          ? "bg-rose-500/10 border-rose-500/30 hover:bg-rose-500/20 shadow-rose-500/5"
+                          : "bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/20"
                       }
                     `}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div
                         className={`w-9 h-9 rounded-full font-bold text-xs flex items-center justify-center shrink-0 border ${
-                          row.presenca
+                          row.presenca === true
                             ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                            : "bg-rose-500/20 text-rose-400 border-rose-500/30"
+                            : row.presenca === false
+                              ? "bg-rose-500/20 text-rose-400 border-rose-500/30"
+                              : "bg-amber-500/20 text-amber-400 border-amber-500/30"
                         }`}
                       >
                         {initial}
@@ -759,14 +748,16 @@ export default function PresencasPage() {
                     </div>
 
                     <div className="shrink-0">
-                      {row.presenca ? (
+                      {row.presenca === true ? (
                         <div className="flex items-center gap-1 text-emerald-400 font-semibold text-xs">
                           <CheckCircle2 className="w-5 h-5" />
                         </div>
-                      ) : (
+                      ) : row.presenca === false ? (
                         <div className="flex items-center gap-1 text-rose-400 font-semibold text-xs">
                           <XCircle className="w-5 h-5" />
                         </div>
+                      ) : (
+                        <span className="text-xs font-semibold text-amber-400">Marcar</span>
                       )}
                     </div>
                   </button>

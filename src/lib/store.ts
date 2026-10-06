@@ -137,8 +137,10 @@ export interface Aula {
 // ============ Table names ============
 export const STORES = {
   ALUNOS: "alunos",
+  ALUNOS_DIARIO: "alunos_diario",
   LEADS: "leads",
   MATRICULAS: "matriculas",
+  MATRICULAS_DIARIO: "matriculas_diario",
   TURMAS: "turmas",
   MODALIDADES: "modalidades",
   INSTRUTORES: "instrutores",
@@ -186,10 +188,23 @@ export function sanitizePayload<T>(item: T): T {
 
 // ============ Generic CRUD (async) ============
 export async function getAll<T>(table: string): Promise<T[]> {
-  const { data, error } = await supabase.from(table as any).select("*").order("created_at", { ascending: false });
+  const source = table === STORES.MATRICULAS ? "matriculas_situacao" : table;
+  const query = supabase.from(source as any).select("*");
+  const { data, error } = await (table === STORES.PRESENCAS
+    ? query.is("deleted_at", null)
+    : query).order("created_at", { ascending: false });
   if (error) {
     console.error(`[getAll ${table}]`, error);
-    return [];
+    throw error;
+  }
+  if (table === STORES.MATRICULAS) {
+    return ((data as any[]) || []).map(({
+      situacao_atual, liberado_efetivo, mensalidade_paga, mensalidade_vencida, ...row
+    }) => ({
+      ...row,
+      status_matricula: situacao_atual,
+      liberado_para_aula: liberado_efetivo,
+    })) as T[];
   }
   return (data as T[]) || [];
 }

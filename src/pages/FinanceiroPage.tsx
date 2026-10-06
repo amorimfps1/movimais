@@ -90,7 +90,7 @@ export default function FinanceiroPage() {
 
 
   // Estados de filtro
-  const [periodoFiltro, setPeriodoFiltro] = useState<"mes_atual" | "3m" | "6m" | "12m" | "personalizado" >("mes_atual");
+  const [periodoFiltro, setPeriodoFiltro] = useState<"mes_atual" | "3m" | "6m" | "12m" | "geral" | "personalizado">("mes_atual");
   const [dataInicio, setDataInicio] = useState<string>("");
   const [dataFim, setDataFim] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"modalidades" | "professores">("modalidades");

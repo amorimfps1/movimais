@@ -55,7 +55,7 @@ export default function MatriculasPage() {
   const turmasMap = useMemo(() => new Map(turmas.map(t => [t.id, t])), [turmas]);
 
   // KPIs Otimizadas com useMemo
-  const { totalMatriculas, ativas, pendentesLiberacao, receitaEstimadaMensal, liberadosCount } = useMemo(() => {
+  const { totalMatriculas, ativas, pendentesLiberacao, somaValoresFinais, liberadosCount } = useMemo(() => {
     const total = matriculas.length;
     const ativ = matriculas.filter(m => m.status_matricula === "ATIVA").length;
     const pend = matriculas.filter(m => m.status_matricula === "PENDENTE_LIBERACAO").length;
@@ -67,7 +67,7 @@ export default function MatriculasPage() {
       totalMatriculas: total,
       ativas: ativ,
       pendentesLiberacao: pend,
-      receitaEstimadaMensal: rec,
+      somaValoresFinais: rec,
       liberadosCount: lib,
     };
   }, [matriculas]);
@@ -120,8 +120,11 @@ export default function MatriculasPage() {
       const updated = {
         ...item,
         liberado_para_aula: !item.liberado_para_aula,
-        status_matricula: !item.liberado_para_aula ? "ATIVA" : item.status_matricula,
       };
+      if (!item.liberado_para_aula && item.status_matricula !== "ATIVA") {
+        toast({ title: "Acesso bloqueado", description: "É necessária uma mensalidade integralmente paga e nenhuma mensalidade vencida.", variant: "destructive" });
+        return;
+      }
       await update(STORES.MATRICULAS, updated);
       await reload();
       toast({
@@ -227,7 +230,7 @@ export default function MatriculasPage() {
       {/* Top Header */}
       <PageHeader
         title="Matrículas"
-        description="Gestão de inscrições ativas, planos (Mensal, Trimestral, Anual), valores e controle de liberação de aulas"
+        description="Situação das inscrições conforme mensalidades pagas e vencidas"
         badge={`${totalMatriculas} Matrículas`}
         action={
           <Button onClick={handleNew} className="rounded-xl shadow-md shadow-primary/20 gap-2">
@@ -248,23 +251,23 @@ export default function MatriculasPage() {
           trendType="positive"
         />
         <StatCard
-          title="Receita Mensal Estimada"
-          value={`R$ ${receitaEstimadaMensal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
+          title="Soma dos Valores Finais"
+          value={`R$ ${somaValoresFinais.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
           icon={DollarSign}
           variant="primary"
-          trend="Baseada nas matrículas ativas"
+          trend="Matrículas ativas; sem equivalência mensal"
         />
         <StatCard
           title="Pendentes de Liberação"
           value={pendentesLiberacao}
           icon={AlertCircle}
           variant="warning"
-          trend="Aguardando liberação da secretaria"
+          trend="Aguardando mensalidade integral"
           trendType="neutral"
         />
         <StatCard
           title="Liberados p/ Aula"
-          value={matriculas.filter(m => m.liberado_para_aula).length}
+          value={liberadosCount}
           icon={CheckCircle}
           variant="info"
           trend="Com acesso confirmado"
@@ -297,6 +300,7 @@ export default function MatriculasPage() {
               variant="ghost"
               className={`h-8 px-2.5 text-xs rounded-lg gap-1.5 ${m.liberado_para_aula ? "text-emerald-400 hover:bg-emerald-500/10" : "text-amber-400 hover:bg-amber-500/10"}`}
               onClick={() => handleToggleLiberacao(m)}
+              disabled={!m.liberado_para_aula && m.status_matricula !== "ATIVA"}
               title={m.liberado_para_aula ? "Clique para revogar liberação" : "Clique para liberar acesso"}
             >
               <CheckCircle className="w-3.5 h-3.5" />
@@ -580,11 +584,12 @@ export default function MatriculasPage() {
               <Select value={form.status_matricula} onValueChange={v => set("status_matricula", v)}>
                 <SelectTrigger className="bg-background/60 border-white/10 rounded-xl"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-card/95 border-white/10">
-                  {["PENDENTE_LIBERACAO","ATIVA","SUSPENSA_30_DIAS","TRANCADA_JUSTIFICADA","BLOQUEADA_INADIMPLENCIA","EXPERIMENTAL","CANCELADA","CONCLUIDA"].map(s => (
-                    <SelectItem key={s} value={s}>{s.replace(/_/g," ")}</SelectItem>
+                  {["PENDENTE_LIBERACAO","ATIVA","BLOQUEADA_INADIMPLENCIA","SUSPENSA_30_DIAS","TRANCADA_JUSTIFICADA","EXPERIMENTAL","CANCELADA","CONCLUIDA"].map(s => (
+                    <SelectItem key={s} value={s} disabled={s === "ATIVA" || s === "BLOQUEADA_INADIMPLENCIA"}>{s.replace(/_/g," ")}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">Ativa e inadimplente são calculados pelas mensalidades vinculadas.</p>
             </div>
 
             <div className="sm:col-span-2 flex items-center justify-between p-3 rounded-xl bg-white/[0.03] border border-white/5 mt-1">
@@ -592,7 +597,7 @@ export default function MatriculasPage() {
                 <span className="text-xs font-medium text-foreground block">Liberado para Aulas</span>
                 <span className="text-[11px] text-muted-foreground">Permite o aluno constar na chamada dos instrutores</span>
               </div>
-              <Switch checked={form.liberado_para_aula} onCheckedChange={v => set("liberado_para_aula", v)} />
+              <Switch checked={form.liberado_para_aula} disabled={form.status_matricula !== "ATIVA"} onCheckedChange={v => set("liberado_para_aula", v)} />
             </div>
 
             <div className="sm:col-span-2">
@@ -606,7 +611,7 @@ export default function MatriculasPage() {
               Cancelar
             </Button>
             <Button onClick={handleSave} className="rounded-xl shadow-md shadow-primary/20">
-              {editingItem ? "Salvar Alterações" : "Efetivar Matrícula"}
+              {editingItem ? "Salvar Alterações" : "Criar Matrícula Pendente"}
             </Button>
           </div>
         </DialogContent>

@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [instrutorId, setInstrutorId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadUserData = async (uid: string, userEmail?: string) => {
+  const loadUserData = async (uid: string) => {
     try {
       const [{ data: rolesData }, { data: profileData }] = await Promise.all([
         supabase.from("user_roles").select("role").eq("user_id", uid),
@@ -48,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setStatus(userStatus);
 
       let specs: string[] = (profileData?.especialidades as string[]) || [];
-      let instId: string | null = profileData?.id_instrutor || null;
+      let instId: string | null = null;
 
       // Se for instrutor, resolver instrutorId e especialidades na tabela instrutores
       if (userRoles.includes("instrutor")) {
@@ -65,32 +65,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (specs.length === 0 && instByUser.especialidades && instByUser.especialidades.length > 0) {
               specs = instByUser.especialidades;
             }
-          } else {
-            // 2. Busca por email (fallback)
-            const emailToSearch = userEmail || profileData?.email;
-            if (emailToSearch) {
-              const { data: instByEmail } = await supabase
-                .from("instrutores")
-                .select("id, especialidades, user_id")
-                .eq("email", emailToSearch)
-                .maybeSingle();
-
-              if (instByEmail) {
-                instId = instByEmail.id;
-                if (specs.length === 0 && instByEmail.especialidades && instByEmail.especialidades.length > 0) {
-                  specs = instByEmail.especialidades;
-                }
-                // Preenche user_id no instrutor se estivesse vazio
-                if (!instByEmail.user_id) {
-                  await supabase.from("instrutores").update({ user_id: uid } as any).eq("id", instByEmail.id);
-                }
-              }
-            }
-          }
-
-          // Atualiza profiles se id_instrutor estivesse divergente
-          if (instId && profileData && profileData.id_instrutor !== instId) {
-            await supabase.from("profiles").update({ id_instrutor: instId, especialidades: specs } as any).eq("id", uid);
           }
         } catch (e) {
           console.warn("Fallback de busca de instrutor em useAuth:", e);
@@ -113,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
-        setTimeout(() => loadUserData(s.user.id, s.user.email), 0);
+        setTimeout(() => loadUserData(s.user.id), 0);
       } else {
         setRoles([]);
         setStatus(null);
@@ -126,7 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
-        loadUserData(s.user.id, s.user.email).finally(() => setLoading(false));
+        loadUserData(s.user.id).finally(() => setLoading(false));
       } else {
         setLoading(false);
       }
@@ -163,10 +137,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setInstrutorId(null);
     },
     refreshRoles: async () => {
-      if (user) await loadUserData(user.id, user.email);
+      if (user) await loadUserData(user.id);
     },
     refreshProfile: async () => {
-      if (user) await loadUserData(user.id, user.email);
+      if (user) await loadUserData(user.id);
     },
   };
 

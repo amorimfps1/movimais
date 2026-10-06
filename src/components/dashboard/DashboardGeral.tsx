@@ -7,7 +7,7 @@ import {
 import {
   Users, UserPlus, GraduationCap, AlertTriangle, TrendingUp,
   DollarSign, CheckCircle2, Calendar, Plus, ClipboardCheck,
-  CreditCard, ArrowUpRight, Award, UserX, Target, AlertCircle
+  CreditCard, ArrowUpRight, UserX, Target, AlertCircle
 } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import StatusBadge from "@/components/StatusBadge";
@@ -17,8 +17,6 @@ import { useTable } from "@/hooks/useTable";
 import { formatDateToBR } from "@/lib/utils";
 import { CustomChartTooltip, CustomDonutTooltip } from "./CustomChartTooltips";
 import VisualFunnel from "./VisualFunnel";
-import DivergentBarChart from "./DivergentBarChart";
-import RadialGauge from "./RadialGauge";
 
 const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
@@ -64,7 +62,7 @@ export default function DashboardGeral() {
     const status = String(p.status_pagamento || "").trim().toUpperCase();
     const valorPagoNum = Number(p.valor_pago) || 0;
     const valorPrevistoNum = Number(p.valor_previsto) || 0;
-    const isPago = status === "PAGO" || status === "LIQUIDADO" || status === "RECEBIDO" || (valorPagoNum > 0 && status !== "ESTORNADO" && status !== "CANCELADO");
+    const isPago = status === "PAGO";
     const isValido = status !== "ESTORNADO" && status !== "CANCELADO" && status !== "ISENTO";
 
     return {
@@ -73,14 +71,14 @@ export default function DashboardGeral() {
       status,
       isPago,
       isValido,
-      valorPago: isPago ? (valorPagoNum || valorPrevistoNum || 0) : 0,
+      valorPago: isPago ? valorPagoNum : 0,
       valorPrevisto: valorPrevistoNum || valorPagoNum || 0,
     };
   }, []);
 
   // --- Indicadores Centrais ---
   const alunosAtivosCount = useMemo(() => {
-    return alunos.filter(a => a.status_cadastral !== "INATIVO" && a.status_cadastral !== "CANCELADO").length || alunos.length;
+    return alunos.filter(a => a.status_cadastral !== "INATIVO" && a.status_cadastral !== "CANCELADO").length;
   }, [alunos]);
 
   const taxaOcupacao = useMemo(() => {
@@ -95,7 +93,7 @@ export default function DashboardGeral() {
     return pagamentos.reduce((acc, p) => acc + parsePayment(p).valorPago, 0);
   }, [pagamentos, parsePayment]);
 
-  const receitaPrevistaMesAtual = useMemo(() => {
+  const receitaPrevistaRegistrada = useMemo(() => {
     return pagamentos.reduce((acc, p) => acc + parsePayment(p).valorPrevisto, 0);
   }, [pagamentos, parsePayment]);
 
@@ -120,23 +118,21 @@ export default function DashboardGeral() {
 
   const taxaAdimplencia = useMemo(() => {
     const total = pagamentos.length;
-    if (total === 0) return 100;
+    if (total === 0) return 0;
     const pagos = pagamentos.filter(p => parsePayment(p).isPago).length;
     return Math.round((pagos / total) * 100);
   }, [pagamentos, parsePayment]);
 
   // --- Funil de Conversão Comercial com VisualFunnel ---
   const funilStages = useMemo(() => {
-    const totalLeads = leads.length || 32;
-    const experimentais = leads.filter(l => l.status_lead === "EM_CONTATO" || l.status_lead === "EXPERIMENTAL" || l.converteu_em_aluno).length || 24;
-    const convertidos = leads.filter(l => l.converteu_em_aluno || l.status_lead === "CONVERTIDO").length || matriculas.length || 18;
+    const totalLeads = leads.length;
+    const convertidos = leads.filter(l => l.converteu_em_aluno || l.status_lead === "CONVERTIDO").length;
 
     return [
       { label: "1. Leads Cadastrados", count: totalLeads, sublabel: "Contatos de todas as origens", color: COLORS.sky },
-      { label: "2. Aulas Experimentais", count: experimentais, sublabel: "Visitas presenciais à escola", color: COLORS.purple },
-      { label: "3. Matrículas Fechadas", count: convertidos, sublabel: "Alunos com matrícula ativa", color: COLORS.emerald },
+      { label: "2. Convertidos em Alunos", count: convertidos, sublabel: "Leads marcados como convertidos", color: COLORS.emerald },
     ];
-  }, [leads, matriculas]);
+  }, [leads]);
 
   // --- Gráfico de Receita Previsto vs Recebido ---
   const receitaPorMes = useMemo(() => {
@@ -158,12 +154,6 @@ export default function DashboardGeral() {
         }
       });
 
-      const matriculaPrev = matriculas
-        .filter(m => m.status_matricula === "ATIVA" || m.status_matricula === "PENDENTE_LIBERACAO")
-        .reduce((s, m) => s + (Number(m.valor_final) || 0), 0);
-
-      previsto = Math.max(previsto, matriculaPrev > 0 ? matriculaPrev / 3 : 0);
-
       return {
         mes: MESES[mes],
         labelCompleto: `${MESES[mes]} de ${ano}`,
@@ -171,36 +161,7 @@ export default function DashboardGeral() {
         previsto,
       };
     });
-  }, [pagamentos, matriculas, periodo, parsePayment]);
-
-  // --- Dados Divergentes (Net Growth: Matrículas vs Cancelamentos) ---
-  const divergentGrowthData = useMemo(() => {
-    const now = new Date();
-    return Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
-      const prox = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-
-      const novos = alunos.filter(a => {
-        if (!a.data_cadastro) return false;
-        const dt = new Date(a.data_cadastro);
-        return dt >= d && dt < prox;
-      }).length;
-
-      const cancelados = matriculas.filter(m => {
-        if (m.status_matricula !== "CANCELADA" && m.status_matricula !== "TRANCADA") return false;
-        if (!m.data_inicio) return false;
-        const dt = new Date(m.data_inicio);
-        return dt >= d && dt < prox;
-      }).length;
-
-      return {
-        label: MESES[d.getMonth()],
-        labelCompleto: `${MESES[d.getMonth()]} de ${d.getFullYear()}`,
-        positive: Math.max(novos, i + 3),
-        negative: Math.max(cancelados, i % 2 === 0 ? 1 : 0),
-      };
-    });
-  }, [alunos, matriculas]);
+  }, [pagamentos, periodo, parsePayment]);
 
   // --- Status das Matrículas (Donut) ---
   const statusMatriculas = useMemo(() => {
@@ -209,11 +170,6 @@ export default function DashboardGeral() {
       const st = m.status_matricula || "ATIVA";
       counts[st] = (counts[st] || 0) + 1;
     });
-    if (Object.keys(counts).length === 0) {
-      counts["ATIVA"] = 42;
-      counts["TRANCADA"] = 3;
-      counts["CANCELADA"] = 2;
-    }
     return Object.entries(counts).map(([name, value]) => ({
       name: name.replace(/_/g, " "),
       value,
@@ -231,8 +187,8 @@ export default function DashboardGeral() {
 
     return turmas.map(t => {
       const ocupados = matPorTurma.get(t.id) || 0;
-      const cap = t.capacidade_maxima || 20;
-      const pct = Math.round((ocupados / cap) * 100);
+      const cap = t.capacidade_maxima || 0;
+      const pct = cap > 0 ? Math.round((ocupados / cap) * 100) : 0;
       return {
         ...t,
         ocupados,
@@ -240,7 +196,7 @@ export default function DashboardGeral() {
         pctOcupacao: pct,
         isCritico: pct < 50,
       };
-    }).sort((a, b) => a.pctOcupacao - b.pctOcupacao).slice(0, 4);
+    }).filter(t => t.capacidade > 0 && t.isCritico).sort((a, b) => a.pctOcupacao - b.pctOcupacao).slice(0, 4);
   }, [turmas, matriculas]);
 
   return (
@@ -252,22 +208,22 @@ export default function DashboardGeral() {
           value={alunosAtivosCount}
           icon={Users}
           variant="primary"
-          badge={`${taxaOcupacao}% Ocupado`}
+          badge={`${taxaOcupacao}% da meta de alunos`}
           progress={taxaOcupacao}
-          target={`Meta: ${META_CAPACIDADE_TOTAL} vagas`}
+          target={`Referência: ${META_CAPACIDADE_TOTAL} alunos`}
           trend={`+${novosAlunosMes} novos este mês`}
           trendType="positive"
         />
 
         <StatCard
-          title="Receita Realizada"
+          title="Recebido Registrado"
           value={`R$ ${receitaTotal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
           icon={DollarSign}
           variant="success"
-          badge={`${taxaAdimplencia}% Adimplência`}
+          badge={pagamentos.length > 0 ? `${taxaAdimplencia}% dos lançamentos pagos` : "Sem lançamentos"}
           progress={taxaAdimplencia}
-          target="Meta 100% de arrecadação"
-          trend={`Previsto: R$ ${receitaPrevistaMesAtual.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`}
+          target="Todos os períodos registrados"
+          trend={`Valor previsto registrado: R$ ${receitaPrevistaRegistrada.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}`}
           trendType="neutral"
         />
 
@@ -276,22 +232,18 @@ export default function DashboardGeral() {
           value={`R$ ${valorInadimplencia.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`}
           icon={AlertTriangle}
           variant={inadimplentesCount > 0 ? "warning" : "success"}
-          badge={inadimplentesCount > 0 ? `${inadimplentesCount} atrasos` : "Em dia"}
-          trend={inadimplentesCount > 0 ? "Requer contato de cobrança" : "Nenhum atraso crítico"}
+          badge={inadimplentesCount > 0 ? `${inadimplentesCount} marcados como atrasados` : "Nenhum marcado"}
+          trend={inadimplentesCount > 0 ? "Requer revisão de cobrança" : "Atraso ainda não é calculado pelo vencimento"}
           trendType={inadimplentesCount > 0 ? "negative" : "positive"}
-          target="Tolerância máxima: < 5%"
+          target="Status informado nos lançamentos"
         />
 
         <StatCard
-          title="NPS da Instituição"
-          value="84"
-          icon={Award}
+          title="Matrículas Ativas"
+          value={matriculasAtivas}
+          icon={GraduationCap}
           variant="purple"
-          badge="Zona de Excelência"
-          progress={84}
-          target="Escala de -100 a +100"
-          trend="88% Promotores • 9% Neutros"
-          trendType="positive"
+          badge="Registros atuais"
         />
       </div>
 
@@ -378,13 +330,13 @@ export default function DashboardGeral() {
         <div className="rounded-2xl border border-white/10 bg-card/60 p-6 backdrop-blur-xl lg:col-span-5 space-y-4 shadow-lg flex flex-col justify-between">
           <VisualFunnel
             title="Funil de Conversão Comercial"
-            subtitle="Taxa de passagem de leads até a matrícula ativa"
+            subtitle="Situação registrada dos interessados; matrícula ainda não vinculada ao lead"
             stages={funilStages}
             unit="alunos"
           />
 
           <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>Conversão Geral: <strong>{Math.round((funilStages[2].count / funilStages[0].count) * 100)}%</strong></span>
+            <span>Leads convertidos em alunos: <strong>{funilStages[0].count > 0 ? Math.round((funilStages[1].count / funilStages[0].count) * 100) : 0}%</strong></span>
             <Link to="/leads" className="text-primary hover:underline flex items-center gap-1 font-medium">
               Gerenciar Leads <ArrowUpRight className="w-3 h-3" />
             </Link>
@@ -394,16 +346,10 @@ export default function DashboardGeral() {
 
       {/* CAMADA 3: SEGMENTAÇÃO & AÇÕES DETALHADAS */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Balanço Divergente de Matrículas vs Cancelamentos (5 Colunas) */}
-        <div className="lg:col-span-5">
-          <DivergentBarChart
-            title="Net Growth: Matrículas vs. Saídas"
-            subtitle="Balanço líquido de novas adesões e cancelamentos"
-            data={divergentGrowthData}
-            positiveName="Novos Alunos"
-            negativeName="Cancelamentos"
-            unit="alunos"
-          />
+        {/* Sem data de cancelamento, não há série histórica confiável de saídas */}
+        <div className="lg:col-span-5 rounded-2xl border border-white/10 bg-card/60 p-6 space-y-3">
+          <h3 className="text-sm font-semibold">Evolução de Matrículas</h3>
+          <p className="text-xs text-muted-foreground">O sistema ainda não registra a data do cancelamento. A comparação mensal de entradas e saídas ficará disponível após esse dado ser coletado.</p>
         </div>
 
         {/* Status de Matrículas (Donut Limpo - 3 Colunas) */}
@@ -415,7 +361,8 @@ export default function DashboardGeral() {
             <p className="text-xs text-muted-foreground">Proporção por estado atual</p>
           </div>
 
-          <ResponsiveContainer width="100%" height={200}>
+          {statusMatriculas.length === 0 && <p className="text-xs text-muted-foreground py-6">Ainda não há matrículas registradas.</p>}
+          {statusMatriculas.length > 0 && <ResponsiveContainer width="100%" height={200}>
             <PieChart>
               <Pie
                 data={statusMatriculas}
@@ -438,7 +385,7 @@ export default function DashboardGeral() {
                 formatter={(val) => <span className="text-white font-medium ml-1">{val}</span>}
               />
             </PieChart>
-          </ResponsiveContainer>
+          </ResponsiveContainer>}
         </div>
 
         {/* Turmas em Alerta de Ocupação (4 Colunas) */}
@@ -459,7 +406,7 @@ export default function DashboardGeral() {
           <div className="space-y-2.5">
             {turmasAlerta.length === 0 ? (
               <div className="text-xs text-muted-foreground text-center py-6">
-                Todas as turmas estão com boa taxa de ocupação!
+                Nenhuma turma com capacidade definida está abaixo de 50% de ocupação.
               </div>
             ) : (
               turmasAlerta.map(t => (

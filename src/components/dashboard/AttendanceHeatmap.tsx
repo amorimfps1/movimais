@@ -27,41 +27,10 @@ export const AttendanceHeatmap: FC<AttendanceHeatmapProps> = ({
 }) => {
   const [hoveredCell, setHoveredCell] = useState<HeatmapCell | null>(null);
 
-  // Fallback mock data if not provided
-  const cells: HeatmapCell[] = data || [
-    { day: "Seg", shift: "Manhã", attendanceRate: 88, totalStudents: 45, presentStudents: 40 },
-    { day: "Seg", shift: "Tarde", attendanceRate: 92, totalStudents: 60, presentStudents: 55 },
-    { day: "Seg", shift: "Noite", attendanceRate: 85, totalStudents: 50, presentStudents: 42 },
-
-    { day: "Ter", shift: "Manhã", attendanceRate: 95, totalStudents: 40, presentStudents: 38 },
-    { day: "Ter", shift: "Tarde", attendanceRate: 90, totalStudents: 65, presentStudents: 58 },
-    { day: "Ter", shift: "Noite", attendanceRate: 94, totalStudents: 55, presentStudents: 52 },
-
-    { day: "Qua", shift: "Manhã", attendanceRate: 82, totalStudents: 45, presentStudents: 37 },
-    { day: "Qua", shift: "Tarde", attendanceRate: 88, totalStudents: 60, presentStudents: 53 },
-    { day: "Qua", shift: "Noite", attendanceRate: 86, totalStudents: 50, presentStudents: 43 },
-
-    { day: "Qui", shift: "Manhã", attendanceRate: 91, totalStudents: 40, presentStudents: 36 },
-    { day: "Qui", shift: "Tarde", attendanceRate: 93, totalStudents: 65, presentStudents: 60 },
-    { day: "Qui", shift: "Noite", attendanceRate: 90, totalStudents: 55, presentStudents: 49 },
-
-    { day: "Sex", shift: "Manhã", attendanceRate: 74, totalStudents: 45, presentStudents: 33 },
-    { day: "Sex", shift: "Tarde", attendanceRate: 79, totalStudents: 60, presentStudents: 47 },
-    { day: "Sex", shift: "Noite", attendanceRate: 68, totalStudents: 50, presentStudents: 34 },
-
-    { day: "Sáb", shift: "Manhã", attendanceRate: 96, totalStudents: 70, presentStudents: 67 },
-    { day: "Sáb", shift: "Tarde", attendanceRate: 84, totalStudents: 40, presentStudents: 34 },
-    { day: "Sáb", shift: "Noite", attendanceRate: 50, totalStudents: 20, presentStudents: 10 },
-  ];
+  const cells: HeatmapCell[] = data || [];
 
   const getCell = (day: string, shift: string) => {
-    return cells.find((c) => c.day === day && c.shift === shift) || {
-      day,
-      shift,
-      attendanceRate: 80,
-      totalStudents: 30,
-      presentStudents: 24,
-    };
+    return cells.find((c) => c.day === day && c.shift === shift);
   };
 
   const getCellColor = (rate: number) => {
@@ -77,6 +46,8 @@ export const AttendanceHeatmap: FC<AttendanceHeatmapProps> = ({
         <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">{title}</h3>
         {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
       </div>
+
+      {cells.length === 0 ? <p className="text-xs text-muted-foreground py-6">Ainda não há dados de frequência por dia e turno.</p> : <>
 
       {/* Grid Matrix */}
       <div className="overflow-x-auto custom-scrollbar pb-1">
@@ -100,14 +71,14 @@ export const AttendanceHeatmap: FC<AttendanceHeatmapProps> = ({
                 return (
                   <div
                     key={`${day}-${shift}`}
-                    onMouseEnter={() => setHoveredCell(cell)}
+                    onMouseEnter={() => setHoveredCell(cell || null)}
                     onMouseLeave={() => setHoveredCell(null)}
                     className={cn(
                       "h-9 rounded-lg flex items-center justify-center text-xs transition-all duration-200 cursor-pointer hover:scale-105 hover:shadow-lg shadow-sm",
-                      getCellColor(cell.attendanceRate)
+                      cell ? getCellColor(cell.attendanceRate) : "bg-white/5 text-muted-foreground"
                     )}
                   >
-                    {cell.attendanceRate}%
+                    {cell ? `${cell.attendanceRate}%` : "—"}
                   </div>
                 );
               })}
@@ -146,6 +117,7 @@ export const AttendanceHeatmap: FC<AttendanceHeatmapProps> = ({
           </span>
         </div>
       </div>
+      </>}
     </div>
   );
 };

@@ -7,7 +7,7 @@ test.describe('MOVI+ — Controle de Acesso por Perfil', () => {
     await page.getByPlaceholder('••••••••').fill('Teste@123');
     await page.getByRole('button', { name: 'Entrar no Sistema' }).click();
 
-    await page.waitForURL(/\/(aulas)?/, { timeout: 10000 });
+    await page.waitForURL(url => url.pathname !== '/auth', { timeout: 10000 });
 
     await expect(page.getByRole('link', { name: /leads/i })).not.toBeVisible();
     await expect(page.getByRole('link', { name: /pagamentos/i })).not.toBeVisible();
@@ -23,7 +23,7 @@ test.describe('MOVI+ — Controle de Acesso por Perfil', () => {
     await page.getByPlaceholder('seu@email.com').fill('instrutor1@movi.test');
     await page.getByPlaceholder('••••••••').fill('Teste@123');
     await page.getByRole('button', { name: 'Entrar no Sistema' }).click();
-    await page.waitForURL(/\/(aulas)?/, { timeout: 10000 });
+    await page.waitForURL(url => url.pathname !== '/auth', { timeout: 10000 });
 
     await page.goto('/leads');
 

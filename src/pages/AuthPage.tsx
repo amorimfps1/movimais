@@ -114,29 +114,6 @@ export default function AuthPage() {
         return;
       }
 
-      // Garante inserção direta na tabela profiles com fallback caso o trigger ainda não tenha sido executado
-      if (data?.user?.id) {
-        try {
-          const { error: pErr } = await supabase.from("profiles").upsert({
-            id: data.user.id,
-            email: cleanEmail,
-            nome: cleanEmail.split("@")[0],
-            status: "pendente",
-          } as any);
-
-          if (pErr) {
-            // Se a coluna status ainda não existir no Supabase, tenta upsert sem ela
-            await supabase.from("profiles").upsert({
-              id: data.user.id,
-              email: cleanEmail,
-              nome: cleanEmail.split("@")[0],
-            } as any);
-          }
-        } catch (insertErr) {
-          console.warn("Aviso na inserção de profiles:", insertErr);
-        }
-      }
-
       // Desconecta a sessão para garantir que o usuário não entre sem aprovação
       await supabase.auth.signOut();
 

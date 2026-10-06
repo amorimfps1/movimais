@@ -22,7 +22,18 @@ const emptyPagamento = (): Pagamento => ({
 });
 
 export default function PagamentosPage() {
-  const { data: pagamentos, reload } = useTable<Pagamento>(STORES.PAGAMENTOS);
+  const { data: pagamentosRegistrados, reload } = useTable<Pagamento>(STORES.PAGAMENTOS);
+  const dataHoje = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Sao_Paulo" });
+  const pagamentos = useMemo(() => pagamentosRegistrados.map(p => {
+    if (p.tipo_lancamento !== "MENSALIDADE") return p;
+    const quitada = p.status_pagamento === "PAGO" && !!p.data_pagamento
+      && Number(p.valor_previsto) > 0 && Number(p.valor_pago) >= Number(p.valor_previsto);
+    return {
+      ...p,
+      status_pagamento: quitada ? "PAGO" : p.data_vencimento && p.data_vencimento < dataHoje
+        ? "ATRASADO" : p.status_pagamento === "PAGO" ? "PENDENTE" : p.status_pagamento,
+    };
+  }), [pagamentosRegistrados, dataHoje]);
   const { data: alunos } = useTable<Aluno>(STORES.ALUNOS);
   const { data: matriculas } = useTable<Matricula>(STORES.MATRICULAS);
   const { data: modalidades } = useTable<Modalidade>(STORES.MODALIDADES);
@@ -42,7 +53,7 @@ export default function PagamentosPage() {
   const { totalRecebido, totalPendente, totalAtrasado, taxaAdimplencia } = useMemo(() => {
     const recebido = pagamentos
       .filter(p => p.status_pagamento === "PAGO")
-      .reduce((sum, p) => sum + (Number(p.valor_pago) || Number(p.valor_previsto) || 0), 0);
+      .reduce((sum, p) => sum + (Number(p.valor_pago) || 0), 0);
 
     const pendente = pagamentos
       .filter(p => p.status_pagamento === "PENDENTE" || p.status_pagamento === "PREVISTO")
@@ -50,7 +61,7 @@ export default function PagamentosPage() {
 
     const atrasado = pagamentos
       .filter(p => p.status_pagamento === "ATRASADO")
-      .reduce((sum, p) => sum + (Number(p.valor_previsto) || 0), 0);
+      .reduce((sum, p) => sum + Math.max(0, Number(p.valor_previsto || 0) - Number(p.valor_pago || 0)), 0);
 
     const taxa = pagamentos.length > 0
       ? Math.round((pagamentos.filter(p => p.status_pagamento === "PAGO").length / pagamentos.length) * 100)
@@ -103,11 +114,15 @@ export default function PagamentosPage() {
   // Ação rápida: Dar baixa / Confirmar recebimento
   const handleDarBaixa = useCallback(async (item: Pagamento) => {
     try {
+      if (Number(item.valor_previsto) <= 0 || (item.tipo_lancamento === "MENSALIDADE" && !item.id_matricula)) {
+        toast({ title: "Revise o lançamento", description: "Informe valor e matrícula antes de dar baixa na mensalidade.", variant: "destructive" });
+        return;
+      }
       const updated: Pagamento = {
         ...item,
         status_pagamento: "PAGO",
         data_pagamento: new Date().toISOString().split("T")[0],
-        valor_pago: item.valor_pago || item.valor_previsto || 0,
+        valor_pago: Math.max(Number(item.valor_pago) || 0, Number(item.valor_previsto) || 0),
       };
       await update(STORES.PAGAMENTOS, updated);
       await reload();
@@ -123,6 +138,19 @@ export default function PagamentosPage() {
   const handleSave = useCallback(async () => {
     if (!form.id_aluno) {
       toast({ title: "Selecione o aluno", variant: "destructive" });
+      return;
+    }
+    if (form.tipo_lancamento === "MENSALIDADE" && (
+      !form.id_matricula || !form.data_vencimento ||
+      matriculasMap.get(form.id_matricula)?.id_aluno !== form.id_aluno
+    )) {
+      toast({ title: "Mensalidade incompleta", description: "Selecione a matrícula do aluno e a data de vencimento.", variant: "destructive" });
+      return;
+    }
+    if (form.tipo_lancamento === "MENSALIDADE" && form.status_pagamento === "PAGO" && (
+      !form.data_pagamento || Number(form.valor_previsto) <= 0 || Number(form.valor_pago) < Number(form.valor_previsto)
+    )) {
+      toast({ title: "Pagamento incompleto", description: "Para quitar a mensalidade, informe a data e o valor integral recebido.", variant: "destructive" });
       return;
     }
     try {
@@ -146,7 +174,7 @@ export default function PagamentosPage() {
     } catch (e: any) {
       toast({ title: "Erro ao salvar", description: e.message, variant: "destructive" });
     }
-  }, [editingItem, form, reload, toast]);
+  }, [editingItem, form, matriculasMap, reload, toast]);
 
   const set = useCallback((k: keyof Pagamento, v: any) => setForm(prev => ({ ...prev, [k]: v })), []);
 
@@ -418,7 +446,7 @@ export default function PagamentosPage() {
             </div>
 
             <div>
-              <Label className="text-xs">Matrícula (Opcional)</Label>
+              <Label className="text-xs">Matrícula (obrigatória para mensalidade)</Label>
               <Select value={form.id_matricula} onValueChange={v => set("id_matricula", v)}>
                 <SelectTrigger className="bg-background/60 border-white/10 rounded-xl"><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent className="bg-card/95 border-white/10">

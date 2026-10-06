@@ -45,15 +45,6 @@ const emptyAula = (): Aula => ({
   observacoes: "",
 });
 
-async function getAulas(): Promise<Aula[]> {
-  const { data, error } = await supabase
-    .from("aulas" as any)
-    .select("*")
-    .order("data_aula", { ascending: false });
-  if (error) { console.error("[getAulas]", error); return []; }
-  return (data as Aula[]) || [];
-}
-
 async function saveAula(aula: Aula, isEdit: boolean): Promise<void> {
   const payload = {
     ...aula,
@@ -83,8 +74,7 @@ export default function AulasPage() {
   const { data: instrutores } = useTable<Instrutor>(STORES.INSTRUTORES);
   const { data: modalidades } = useTable<Modalidade>(STORES.MODALIDADES);
 
-  const [aulas, setAulas] = useState<Aula[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: aulas, reload } = useTable<Aula>(STORES.AULAS);
   const [open, setOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<Aula | null>(null);
   const [form, setForm] = useState<Aula>(emptyAula());
@@ -180,17 +170,6 @@ export default function AulasPage() {
     }
   }, [currentInstrutor]);
 
-  const reload = async () => {
-    setLoading(true);
-    const data = await getAulas();
-    setAulas(data);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    reload();
-  }, []);
-
   // Turmas filtradas para a grade semanal (apenas turmas efetivamente atribuídas ao instrutor)
   const filteredTurmas = useMemo(() => {
     return turmas.filter(t => {
@@ -232,7 +211,7 @@ export default function AulasPage() {
       }
 
       return matchInst && matchMod;
-    });
+    }).sort((a, b) => b.data_aula.localeCompare(a.data_aula));
   }, [aulas, turmas, isInstrutor, isAdmin, isAulaAssignedToInstrutor, filterInstrutor, filterModalidade, instrutores]);
 
   // KPIs

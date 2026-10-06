@@ -44,7 +44,7 @@ import {
   X,
 } from "lucide-react";
 import { cn, formatDateToBR } from "@/lib/utils";
-import { generateId, STORES, type Modalidade, type Instrutor } from "@/lib/store";
+import { STORES, type Modalidade, type Instrutor } from "@/lib/store";
 import { useTable } from "@/hooks/useTable";
 
 interface ProfileItem {
@@ -122,30 +122,14 @@ export default function UsuariosPage() {
       // Refresh local caches for modalities and instructors
       await Promise.all([reloadInstrutores(), reloadModalidades()]);
 
-      // 1. Buscar perfis com fallback de queries
-      let profsData: any[] = [];
-      let pError: any = null;
-
-      const res1 = await supabase.from("profiles").select("*").order("created_at", { ascending: false });
-      if (!res1.error && res1.data) {
-        profsData = res1.data;
-      } else {
-        const res2 = await supabase.from("profiles").select("*");
-        if (!res2.error && res2.data) {
-          profsData = res2.data;
-        } else {
-          pError = res1.error || res2.error;
-        }
-      }
-
-      // 2. Buscar user_roles
-      const { data: rs, error: rErr } = await supabase.from("user_roles").select("user_id, role");
-
-      if (pError) {
-        console.warn("Erro ao buscar tabela profiles:", pError);
-        setFetchError(pError.message || "Erro de permissão ao ler a tabela profiles");
-      }
-      if (rErr) console.warn("Erro ao buscar papéis:", rErr);
+      const [profilesResult, rolesResult] = await Promise.all([
+        supabase.from("profiles").select("*").order("created_at", { ascending: false }),
+        supabase.from("user_roles").select("user_id, role"),
+      ]);
+      if (profilesResult.error) throw profilesResult.error;
+      if (rolesResult.error) throw rolesResult.error;
+      const profsData = profilesResult.data ?? [];
+      const rs = rolesResult.data ?? [];
 
       const map: Record<string, AppRole[]> = {};
       (rs ?? []).forEach((r: any) => {
@@ -175,6 +159,8 @@ export default function UsuariosPage() {
       }
     } catch (err: any) {
       console.error(err);
+      setProfiles([]);
+      setRolesMap({});
       setFetchError(err?.message || "Erro inesperado ao consultar dados.");
       toast.error("Erro ao carregar dados de usuários.");
     } finally {
@@ -204,108 +190,29 @@ export default function UsuariosPage() {
     setApproveTarget(p);
     setSelectedRole("");
     setSelectedSpecs(p.especialidades || []);
-    // Tenta encontrar instrutor com email correspondente
-    const matchingInst = instrutores.find(i => i.email?.toLowerCase() === p.email.toLowerCase());
-    setSelectedInstrutorId(matchingInst?.id || p.id_instrutor || "");
-    if (matchingInst && (!p.especialidades || p.especialidades.length === 0)) {
-      setSelectedSpecs(matchingInst.especialidades || []);
-    }
+    setSelectedInstrutorId(p.id_instrutor || "");
   };
 
-  // Função auxiliar para criar/sincronizar perfil na tabela `instrutores`
-  const syncInstructorProfile = async (
+  const manageUser = async (
+    action: "approve" | "reject" | "delete" | "add_role" | "remove_role" | "update_instructor",
     userId: string,
-    userEmail: string,
-    userName: string | null,
-    specs: string[],
-    existingInstrutorId?: string | null
+    role: AppRole | null = null,
+    reason: string | null = null,
+    specs: string[] | null = null,
+    instrutorId: string | null = null,
   ) => {
-    // 1. Garantir modalidades atualizadas para mapeamento de IDs
-    let currentModalidades = modalidades;
-    if (!currentModalidades || currentModalidades.length === 0) {
-      const { data: modsData } = await supabase.from("modalidades").select("*");
-      if (modsData) currentModalidades = modsData as Modalidade[];
+    const { data, error } = await supabase.rpc("manage_user_access" as any, {
+      p_action: action,
+      p_user_id: userId,
+      p_role: role,
+      p_reason: reason,
+      p_specs: specs,
+      p_instrutor_id: instrutorId,
+    });
+    if (error) throw error;
+    if (!(data as { success?: boolean } | null)?.success) {
+      throw new Error("A operação não foi confirmada pelo servidor.");
     }
-
-    const modIds = (currentModalidades || [])
-      .filter((m) => specs.includes(m.nome_modalidade))
-      .map((m) => m.id);
-
-    let targetId = existingInstrutorId || null;
-
-    // 2. Busca segura por user_id ou por email
-    if (!targetId && userId) {
-      const { data: byUser } = await supabase
-        .from("instrutores")
-        .select("id")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (byUser?.id) {
-        targetId = byUser.id;
-      }
-    }
-
-    if (!targetId && userEmail) {
-      const { data: byEmail } = await supabase
-        .from("instrutores")
-        .select("id")
-        .eq("email", userEmail)
-        .maybeSingle();
-
-      if (byEmail?.id) {
-        targetId = byEmail.id;
-      }
-    }
-
-    const instPayload = {
-      nome_completo: userName || userEmail?.split("@")[0] || "Instrutor",
-      email: userEmail || "",
-      especialidades: specs,
-      id_modalidades: modIds,
-      user_id: userId,
-      ativo: true,
-    };
-
-    // 3. Gravação na tabela `instrutores` com tratamento explícito de erro
-    if (targetId) {
-      const { error: updateErr } = await supabase
-        .from("instrutores")
-        .update(instPayload as any)
-        .eq("id", targetId);
-
-      if (updateErr) {
-        console.error("Erro ao atualizar instrutores:", updateErr);
-        throw new Error(`Falha ao atualizar dados em instrutores: ${updateErr.message}`);
-      }
-    } else {
-      targetId = generateId();
-      const { error: insertErr } = await supabase.from("instrutores").insert({
-        id: targetId,
-        funcao: "INSTRUTOR_PRINCIPAL",
-        ...instPayload,
-      } as any);
-
-      if (insertErr) {
-        console.error("Erro ao criar perfil em instrutores:", insertErr);
-        throw new Error(`Falha ao criar perfil de instrutor: ${insertErr.message}`);
-      }
-    }
-
-    // 4. Gravação no perfil (`profiles`)
-    const { error: profErr } = await supabase
-      .from("profiles")
-      .update({
-        especialidades: specs,
-        id_instrutor: targetId,
-      } as any)
-      .eq("id", userId);
-
-    if (profErr) {
-      console.warn("Erro ao atualizar vinculação em profiles:", profErr);
-    }
-
-    return targetId;
   };
 
   // Executar Aprovação com Role Obrigatória e Especialidades
@@ -317,47 +224,9 @@ export default function UsuariosPage() {
 
     setActionLoading(true);
     try {
-      // 1. Tenta via RPC atômica
-      const { error: rpcError } = await supabase.rpc("approve_user", {
-        _target_user_id: approveTarget.id,
-        _assigned_role: selectedRole as any,
-        _approver_id: currentUser?.id ?? "",
-      });
-
-      // 2. Fallback direto caso a RPC ainda não esteja instalada no Supabase
-      if (rpcError) {
-        console.warn("RPC approve_user falhou, aplicando fallback direto:", rpcError.message);
-        
-        try {
-          await supabase
-            .from("profiles")
-            .update({
-              status: "aprovado",
-              approved_by: currentUser?.id,
-              approved_at: new Date().toISOString(),
-              rejection_reason: null,
-            } as any)
-            .eq("id", approveTarget.id);
-        } catch {}
-
-        // Insere o papel em user_roles
-        await supabase.from("user_roles").delete().eq("user_id", approveTarget.id);
-        await supabase.from("user_roles").insert({
-          user_id: approveTarget.id,
-          role: selectedRole as any,
-        });
-      }
-
-      // 3. Criar/Atualizar perfil na tabela `instrutores` caso seja aprovado como instrutor
-      if (selectedRole === "instrutor") {
-        await syncInstructorProfile(
-          approveTarget.id,
-          approveTarget.email,
-          approveTarget.nome,
-          selectedSpecs,
-          selectedInstrutorId
-        );
-      }
+      await manageUser("approve", approveTarget.id, selectedRole, null,
+        selectedRole === "instrutor" ? selectedSpecs : null,
+        selectedRole === "instrutor" ? selectedInstrutorId || null : null);
 
       toast.success(`Usuário ${approveTarget.email} aprovado com sucesso como ${selectedRole}!`);
       setApproveTarget(null);
@@ -378,13 +247,8 @@ export default function UsuariosPage() {
     setActionLoading(true);
 
     try {
-      await syncInstructorProfile(
-        editSpecsTarget.id,
-        editSpecsTarget.email,
-        editSpecsTarget.nome,
-        editSpecsList,
-        editInstrutorId
-      );
+      await manageUser("update_instructor", editSpecsTarget.id, null, null,
+        editSpecsList, editInstrutorId || null);
 
       toast.success(`Especialidades do professor atualizadas com sucesso!`);
       setEditSpecsTarget(null);
@@ -404,28 +268,7 @@ export default function UsuariosPage() {
     try {
       const reason = rejectReason.trim() || "Cadastro recusado pela coordenação.";
       
-      const { error: rpcError } = await supabase.rpc("reject_user", {
-        _target_user_id: rejectTarget.id,
-        _reason: reason,
-        _approver_id: currentUser?.id ?? "",
-      });
-
-      if (rpcError) {
-        console.warn("RPC reject_user falhou, aplicando fallback direto:", rpcError.message);
-        try {
-          await supabase
-            .from("profiles")
-            .update({
-              status: "rejeitado",
-              rejection_reason: reason,
-              approved_by: currentUser?.id,
-              approved_at: new Date().toISOString(),
-            } as any)
-            .eq("id", rejectTarget.id);
-        } catch {}
-
-        await supabase.from("user_roles").delete().eq("user_id", rejectTarget.id);
-      }
+      await manageUser("reject", rejectTarget.id, null, reason);
 
       toast.info(`Cadastro de ${rejectTarget.email} foi recusado.`);
       setRejectTarget(null);
@@ -448,26 +291,7 @@ export default function UsuariosPage() {
 
     setDeleteLoading(true);
     try {
-      const { error: rpcError } = await supabase.rpc("delete_user_account", {
-        _target_user_id: deleteTarget.id,
-        _requester_id: currentUser?.id ?? "",
-      });
-
-      if (rpcError) {
-        console.warn("RPC delete_user_account falhou, aplicando fallback direto:", rpcError.message);
-
-        try {
-          await supabase.from("notifications" as any).delete().eq("user_id", deleteTarget.id);
-        } catch {}
-
-        const { error: rolesErr } = await supabase.from("user_roles").delete().eq("user_id", deleteTarget.id);
-        if (rolesErr) console.warn("Erro ao remover user_roles:", rolesErr);
-
-        const { error: profErr } = await supabase.from("profiles").delete().eq("id", deleteTarget.id);
-        if (profErr) {
-          throw new Error(profErr.message || "Erro de permissão ao excluir o perfil do banco.");
-        }
-      }
+      await manageUser("delete", deleteTarget.id);
 
       toast.success(`Usuário ${deleteTarget.email} foi excluído com sucesso.`);
       setDeleteTarget(null);
@@ -480,48 +304,26 @@ export default function UsuariosPage() {
     }
   };
 
-  // Toggle direto de roles para usuários já ativos
+  // Mudanças de cargos passam pela mesma operação transacional do servidor.
   const toggleRole = async (userId: string, role: AppRole, checked: boolean) => {
     if (userId === currentUser?.id) {
       toast.error("Por motivos de segurança, você não pode alterar os seus próprios cargos de acesso.");
       return;
     }
 
-    if (checked) {
-      const { error } = await supabase.from("user_roles").insert({ user_id: userId, role });
-      if (error) return toast.error(error.message);
-      
-      try {
-        await supabase.from("profiles").update({ status: "aprovado" } as any).eq("id", userId);
-      } catch {}
-
-      if (role === "instrutor") {
-        const targetProf = profiles.find((p) => p.id === userId);
-        if (targetProf) {
-          await syncInstructorProfile(
-            targetProf.id,
-            targetProf.email,
-            targetProf.nome,
-            targetProf.especialidades || [],
-            targetProf.id_instrutor
-          );
-        }
-      }
-      
-      toast.success(`Perfil ${role} atribuído com sucesso!`);
-    } else {
-      const { error } = await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", role);
-      if (error) return toast.error(error.message);
-      toast.success(`Perfil ${role} removido.`);
+    setActionLoading(true);
+    try {
+      const targetProf = profiles.find(p => p.id === userId);
+      await manageUser(checked ? "add_role" : "remove_role", userId, role, null,
+        checked && role === "instrutor" ? targetProf?.especialidades || [] : null,
+        checked && role === "instrutor" ? targetProf?.id_instrutor || null : null);
+      await loadData();
+      toast.success(checked ? `Perfil ${role} atribuído com sucesso!` : `Perfil ${role} removido.`);
+    } catch (err: any) {
+      toast.error(`Erro ao alterar perfil: ${err?.message || "Tente novamente"}`);
+    } finally {
+      setActionLoading(false);
     }
-
-    setRolesMap((prev) => {
-      const current = prev[userId] ?? [];
-      return {
-        ...prev,
-        [userId]: checked ? [...current, role] : current.filter((r) => r !== role),
-      };
-    });
   };
 
   // Listas filtradas ultra-resilientes

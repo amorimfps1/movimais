@@ -16,7 +16,6 @@ import { useTable } from "@/hooks/useTable";
 import { formatDateToBR } from "@/lib/utils";
 import { CustomChartTooltip } from "./CustomChartTooltips";
 import AttendanceHeatmap from "./AttendanceHeatmap";
-import BulletProgressBar from "./BulletProgressBar";
 
 const COLORS = {
   primary: "hsl(0, 65%, 48%)",
@@ -39,16 +38,17 @@ export default function DashboardCoordenacaoView() {
   // --- Indicadores Centrais ---
   const presencasValidas = useMemo(() => presencas.filter(p => p.presenca), [presencas]);
   const taxaPresencaGlobal = useMemo(() => {
-    if (presencas.length === 0) return 84;
+    if (presencas.length === 0) return 0;
     return Math.round((presencasValidas.length / presencas.length) * 100);
   }, [presencas, presencasValidas]);
 
   const contratosPendentesCount = useMemo(() => {
-    return matriculas.filter(m => m.status_matricula === "PENDENTE_LIBERACAO" || !m.liberado_para_aula).length;
+    return matriculas.filter(m => m.status_matricula === "PENDENTE_LIBERACAO" || (m.status_matricula === "ATIVA" && !m.liberado_para_aula)).length;
   }, [matriculas]);
 
   const aulasNaoRealizadasCount = useMemo(() => {
-    return aulas.filter(a => a.status_aula === "CANCELADA" || a.status_aula === "PENDENTE_REPOSICAO").length;
+    const mesAtual = new Date().toISOString().slice(0, 7);
+    return aulas.filter(a => a.data_aula?.startsWith(mesAtual) && (a.status_aula === "CANCELADA" || a.status_aula === "PENDENTE_REPOSICAO")).length;
   }, [aulas]);
 
   // --- Alunos em Risco Crítico de Evasão (>= 3 faltas) ---
@@ -76,20 +76,12 @@ export default function DashboardCoordenacaoView() {
         list.push({
           id: a.id,
           nome: a.nome_completo,
-          telefone: a.telefone || a.telefone_responsavel || "(61) 99999-0000",
+          telefone: a.telefone || a.telefone_responsavel || "",
           turmaNome: turma?.nome_turma || "Turma Geral",
           faltas,
         });
       }
     });
-
-    if (list.length === 0) {
-      return [
-        { id: "1", nome: "Lucas Gabriel Santos", telefone: "(61) 98888-1111", turmaNome: "Ballet Infantil I", faltas: 4 },
-        { id: "2", nome: "Mariana Oliveira Costa", telefone: "(61) 98777-2222", turmaNome: "Pilates Avançado", faltas: 3 },
-        { id: "3", nome: "Felipe Rodrigues Melo", telefone: "(61) 98666-3333", turmaNome: "Karatê Juvenil", faltas: 3 },
-      ];
-    }
 
     return list.sort((a, b) => b.faltas - a.faltas).slice(0, 5);
   }, [alunos, presencas, matriculas, turmas]);
@@ -100,25 +92,40 @@ export default function DashboardCoordenacaoView() {
       const presTurma = presencas.filter(p => p.id_turma === t.id);
       const total = presTurma.length;
       const presentes = presTurma.filter(p => p.presenca).length;
-      const taxa = total > 0 ? Math.round((presentes / total) * 100) : 70 + (t.nome_turma.length % 20);
+      const taxa = total > 0 ? Math.round((presentes / total) * 100) : 0;
 
       return {
         nome: t.nome_turma,
         taxa,
         isCritico: taxa < 75,
+        total,
       };
-    }).slice(0, 6);
+    }).filter(t => t.total > 0).slice(0, 6);
   }, [turmas, presencas]);
+
+  const heatmapData = useMemo(() => {
+    const dias = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    const turmasPorId = new Map(turmas.map(t => [t.id, t]));
+    const agrupado = new Map<string, { day: string; shift: string; totalStudents: number; presentStudents: number }>();
+    presencas.forEach(p => {
+      if (!p.data_aula) return;
+      const data = new Date(`${p.data_aula}T12:00:00`);
+      const hora = Number(turmasPorId.get(p.id_turma)?.horario_inicio?.slice(0, 2));
+      if (Number.isNaN(data.getTime()) || !Number.isFinite(hora)) return;
+      const day = dias[data.getDay()];
+      const shift = hora < 12 ? "Manhã" : hora < 18 ? "Tarde" : "Noite";
+      const key = `${day}:${shift}`;
+      const item = agrupado.get(key) || { day, shift, totalStudents: 0, presentStudents: 0 };
+      item.totalStudents += 1;
+      if (p.presenca) item.presentStudents += 1;
+      agrupado.set(key, item);
+    });
+    return [...agrupado.values()].map(item => ({ ...item, attendanceRate: Math.round((item.presentStudents / item.totalStudents) * 100) }));
+  }, [presencas, turmas]);
 
   // --- Causa-Raiz de Cancelamentos (Pareto) ---
   const motivosCancelamento = useMemo(() => {
-    return [
-      { motivo: "Incompatibilidade de Horário", qtd: 14, percentual: 45 },
-      { motivo: "Mudança de Bairro / Residência", qtd: 7, percentual: 23 },
-      { motivo: "Dificuldade Financeira", qtd: 5, percentual: 16 },
-      { motivo: "Adaptação Pedagógica", qtd: 3, percentual: 10 },
-      { motivo: "Outros", qtd: 2, percentual: 6 },
-    ];
+    return [] as Array<{ motivo: string; qtd: number; percentual: number }>;
   }, []);
 
   return (
@@ -130,43 +137,43 @@ export default function DashboardCoordenacaoView() {
           value={alunosRiscoCritico.length}
           icon={UserX}
           variant={alunosRiscoCritico.length > 0 ? "warning" : "success"}
-          badge="≥ 3 Faltas Consecutivas"
+          badge="2 ou mais faltas registradas"
           trend="Requer contato preventivo imediato"
           trendType={alunosRiscoCritico.length > 0 ? "negative" : "positive"}
           target="Prioridade Máxima"
         />
 
         <StatCard
-          title="Contratos Pendentes"
+          title="Matrículas sem Liberação"
           value={contratosPendentesCount}
           icon={FileText}
           variant="info"
-          badge="Pendência Documental"
+          badge="Liberação de matrícula"
           trend="Matrículas aguardando liberação"
           trendType="neutral"
           target="Secretaria Acadêmica"
         />
 
         <StatCard
-          title="Aulas a Repor"
-          value={aulasNaoRealizadasCount || 3}
+          title="Aulas Canceladas ou Pendentes"
+          value={aulasNaoRealizadasCount}
           icon={Clock}
           variant="purple"
           badge="Grade do Mês"
-          trend="Reposições pendentes de confirmação"
+          trend="Situação das aulas registradas"
           trendType="neutral"
           target="Garantia de 100% de carga"
         />
 
         <StatCard
           title="Presença Média Geral"
-          value={`${taxaPresencaGlobal}%`}
+          value={presencas.length > 0 ? `${taxaPresencaGlobal}%` : "Sem dados"}
           icon={ClipboardCheck}
           variant="success"
           badge="Frequência Global"
           progress={taxaPresencaGlobal}
-          trend="+3% em relação ao mês anterior"
-          trendType="positive"
+          trend={`${presencas.length} registros de presença`}
+          trendType="neutral"
           target="Meta Institucional: ≥ 80%"
         />
       </div>
@@ -189,7 +196,8 @@ export default function DashboardCoordenacaoView() {
             </span>
           </div>
 
-          <ResponsiveContainer width="100%" height={250}>
+          {presencaPorTurma.length === 0 && <p className="text-xs text-muted-foreground py-6">Ainda não há chamadas registradas para calcular a assiduidade por turma.</p>}
+          {presencaPorTurma.length > 0 && <ResponsiveContainer width="100%" height={250}>
             <BarChart data={presencaPorTurma} layout="vertical" margin={{ left: 10, right: 30 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
               <XAxis type="number" domain={[0, 100]} tick={{ fill: "#d4d4d8", fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
@@ -205,7 +213,7 @@ export default function DashboardCoordenacaoView() {
                 ))}
               </Bar>
             </BarChart>
-          </ResponsiveContainer>
+          </ResponsiveContainer>}
 
           <div className="flex items-center justify-between text-xs pt-2 border-t border-white/5">
             <div className="flex gap-4">
@@ -236,6 +244,7 @@ export default function DashboardCoordenacaoView() {
           </div>
 
           <div className="space-y-3 my-auto">
+            {motivosCancelamento.length === 0 && <p className="text-xs text-muted-foreground">Os motivos de cancelamento ainda não são registrados de forma estruturada.</p>}
             {motivosCancelamento.map((item, idx) => (
               <div key={idx} className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
@@ -260,7 +269,7 @@ export default function DashboardCoordenacaoView() {
           </div>
 
           <div className="pt-2 border-t border-white/5 text-[11px] text-muted-foreground flex items-center justify-between">
-            <span>68% das saídas ligadas a horários e mobilidade</span>
+            <span>Indicador disponível após registrar os motivos de cancelamento</span>
             <Link to="/matriculas" className="text-primary hover:underline font-medium">
               Relatório de evasão
             </Link>
@@ -272,7 +281,7 @@ export default function DashboardCoordenacaoView() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Mapa de Calor Semanal (7 Colunas) */}
         <div className="lg:col-span-7">
-          <AttendanceHeatmap />
+          <AttendanceHeatmap data={heatmapData} />
         </div>
 
         {/* Cumprimento de Grade / Bullet Progress Bars (5 Colunas) */}
@@ -286,32 +295,13 @@ export default function DashboardCoordenacaoView() {
             </p>
           </div>
 
-          <div className="space-y-2.5 my-auto">
-            <BulletProgressBar
-              label="Dança & Ballet Infantil"
-              sublabel="Profª. Letícia • Seg/Qua"
-              actual={15}
-              target={16}
-              unit="aulas"
-            />
-            <BulletProgressBar
-              label="Pilates & Condicionamento"
-              sublabel="Prof. Marcelo • Ter/Qui"
-              actual={16}
-              target={16}
-              unit="aulas"
-            />
-            <BulletProgressBar
-              label="Artes Marciais (Karatê)"
-              sublabel="Prof. Ricardo • Ter/Qui/Sáb"
-              actual={12}
-              target={14}
-              unit="aulas"
-            />
+          <div className="space-y-2.5 my-auto text-xs text-muted-foreground">
+            <p>O cadastro atual não define a quantidade mensal prevista de aulas por turma.</p>
+            <p>{aulas.filter(a => a.status_aula === "REALIZADA").length} aulas realizadas registradas.</p>
           </div>
 
           <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>Média Institucional: <strong>94% de Carga Entregue</strong></span>
+            <span>Percentual disponível após definir a grade prevista</span>
             <Link to="/aulas" className="text-primary hover:underline font-medium">
               Ver todas as aulas
             </Link>
@@ -331,7 +321,7 @@ export default function DashboardCoordenacaoView() {
                 Quadro de Ação Preventiva contra Evasão (Busca Ativa)
               </h3>
               <p className="text-xs text-muted-foreground">
-                Alunos com faltas consecutivas críticas que exigem acolhimento humanizado da coordenação
+                Alunos com duas ou mais faltas registradas; a sequência das faltas ainda não é calculada
               </p>
             </div>
           </div>
@@ -341,6 +331,7 @@ export default function DashboardCoordenacaoView() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {alunosRiscoCritico.length === 0 && <p className="text-xs text-muted-foreground">Nenhum aluno com duas ou mais faltas registradas.</p>}
           {alunosRiscoCritico.map(aluno => (
             <div
               key={aluno.id}

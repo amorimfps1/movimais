@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -28,26 +28,23 @@ const COLORS = {
 };
 
 export default function DashboardInstrutorView() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { data: turmas } = useTable<Turma>(STORES.TURMAS);
-  const { data: matriculas } = useTable<Matricula>(STORES.MATRICULAS);
+  const { data: matriculas } = useTable<Pick<Matricula, "id" | "id_aluno" | "id_turma" | "status_matricula" | "liberado_para_aula">>(isAdmin ? STORES.MATRICULAS : STORES.MATRICULAS_DIARIO);
   const { data: presencas } = useTable<Presenca>(STORES.PRESENCAS);
   const { data: aulas } = useTable<Aula>(STORES.AULAS);
-  const { data: alunos } = useTable<Aluno>(STORES.ALUNOS);
+  const { data: alunos } = useTable<Pick<Aluno, "id" | "nome_completo">>(isAdmin ? STORES.ALUNOS : STORES.ALUNOS_DIARIO);
   const { data: instrutores } = useTable<Instrutor>(STORES.INSTRUTORES);
-
-  const [mostrarFinanceiro, setMostrarFinanceiro] = useState(false);
 
   // Identifica o instrutor atual logado
   const instrutorAtual = useMemo(() => {
-    return instrutores.find(i => i.user_id === user?.id) || instrutores[0];
+    return instrutores.find(i => i.user_id === user?.id);
   }, [instrutores, user]);
 
   // Turmas do instrutor
   const minhasTurmas = useMemo(() => {
-    if (!instrutorAtual) return turmas;
-    const filtradas = turmas.filter(t => t.id_instrutor === instrutorAtual.id);
-    return filtradas.length > 0 ? filtradas : turmas;
+    if (!instrutorAtual) return [];
+    return turmas.filter(t => t.id_instrutor === instrutorAtual.id);
   }, [turmas, instrutorAtual]);
 
   const turmasIdsSet = useMemo(() => new Set(minhasTurmas.map(t => t.id)), [minhasTurmas]);
@@ -57,46 +54,48 @@ export default function DashboardInstrutorView() {
     return matriculas.filter(m => m.status_matricula === "ATIVA" && turmasIdsSet.has(m.id_turma));
   }, [matriculas, turmasIdsSet]);
 
-  const totalAlunosAtivos = minhasMatriculas.length || 28;
-  const capacidadeTotal = minhasTurmas.reduce((acc, t) => acc + (t.capacidade_maxima || 20), 0) || 35;
-  const taxaOcupacao = Math.min(Math.round((totalAlunosAtivos / capacidadeTotal) * 100), 100);
+  const totalAlunosAtivos = new Set(minhasMatriculas.map(m => m.id_aluno)).size;
+  const capacidadeTotal = minhasTurmas.reduce((acc, t) => acc + (t.capacidade_maxima || 0), 0);
+  const taxaOcupacao = capacidadeTotal > 0 ? Math.min(Math.round((minhasMatriculas.length / capacidadeTotal) * 100), 100) : 0;
 
   // Aulas ministradas no mês
   const aulasMinistradas = useMemo(() => {
-    return aulas.filter(a => a.status_aula === "REALIZADA" && turmasIdsSet.has(a.id_turma)).length || 14;
+    const mesAtual = new Date().toISOString().slice(0, 7);
+    return aulas.filter(a => a.status_aula === "REALIZADA" && turmasIdsSet.has(a.id_turma) && a.data_aula?.startsWith(mesAtual)).length;
   }, [aulas, turmasIdsSet]);
 
-  const aulasPrevistasMes = 16;
-  const pctAulasConcluidas = Math.min(Math.round((aulasMinistradas / aulasPrevistasMes) * 100), 100);
-
-  // Estimativa de repasse financeiro do instrutor
-  const estimativaRepasse = useMemo(() => {
-    const valorBruto = minhasMatriculas.reduce((acc, m) => acc + (Number(m.valor_final) || 120), 0) || 3360;
-    return valorBruto * 0.5; // 50% de repasse
-  }, [minhasMatriculas]);
+  const aulasPrevistasMes = aulas.filter(a => a.status_aula !== "CANCELADA" && turmasIdsSet.has(a.id_turma) && a.data_aula?.startsWith(new Date().toISOString().slice(0, 7))).length;
+  const pctAulasConcluidas = aulasPrevistasMes > 0 ? Math.min(Math.round((aulasMinistradas / aulasPrevistasMes) * 100), 100) : 0;
+  const presencasDaTurma = presencas.filter(p => turmasIdsSet.has(p.id_turma));
+  const taxaPresenca = presencasDaTurma.length > 0 ? Math.round((presencasDaTurma.filter(p => p.presenca).length / presencasDaTurma.length) * 100) : null;
 
   // Histórico de Presenças nas Últimas 8 Aulas
   const frequenciaHistorico = useMemo(() => {
-    return [
-      { aula: "Aula 1", presencaPct: 92, data: "05/02" },
-      { aula: "Aula 2", presencaPct: 88, data: "08/02" },
-      { aula: "Aula 3", presencaPct: 75, data: "12/02" },
-      { aula: "Aula 4", presencaPct: 95, data: "15/02" },
-      { aula: "Aula 5", presencaPct: 85, data: "19/02" },
-      { aula: "Aula 6", presencaPct: 90, data: "22/02" },
-      { aula: "Aula 7", presencaPct: 82, data: "26/02" },
-      { aula: "Aula 8", presencaPct: 89, data: "01/03" },
-    ];
-  }, []);
+    const grouped = new Map<string, { date: string; total: number; presentes: number }>();
+    presencasDaTurma.forEach(p => {
+      const key = `${p.id_turma}:${p.data_aula}`;
+      const item = grouped.get(key) || { date: p.data_aula, total: 0, presentes: 0 };
+      item.total += 1;
+      if (p.presenca) item.presentes += 1;
+      grouped.set(key, item);
+    });
+    return [...grouped.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-8).map((item, index) => ({
+      aula: `Aula ${index + 1}`,
+      data: formatDateToBR(item.date),
+      presencaPct: Math.round((item.presentes / item.total) * 100),
+    }));
+  }, [presencasDaTurma]);
 
   // Alunos em atenção na turma (com falta recente)
   const alunosEmAtencao = useMemo(() => {
-    return [
-      { id: "1", nome: "Bernardo Silva", turma: minhasTurmas[0]?.nome_turma || "Turma A", aviso: "Faltou na última aula", tipo: "aviso" },
-      { id: "2", nome: "Clara Mendes", turma: minhasTurmas[0]?.nome_turma || "Turma A", aviso: "Nova matrícula - 1ª aula hoje", tipo: "novo" },
-      { id: "3", nome: "Gabriel Dantas", turma: minhasTurmas[1]?.nome_turma || "Turma B", aviso: "Reposição de aula agendada", tipo: "reposicao" },
-    ];
-  }, [minhasTurmas]);
+    return presencasDaTurma.filter(p => !p.presenca && p.id_aluno).sort((a, b) => b.data_aula.localeCompare(a.data_aula)).slice(0, 3).map(p => ({
+      id: p.id,
+      nome: alunos.find(a => a.id === p.id_aluno)?.nome_completo || "Aluno",
+      turma: minhasTurmas.find(t => t.id === p.id_turma)?.nome_turma || "Turma",
+      aviso: `Falta em ${formatDateToBR(p.data_aula)}`,
+      tipo: "aviso",
+    }));
+  }, [presencasDaTurma, alunos, minhasTurmas]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -144,46 +143,37 @@ export default function DashboardInstrutorView() {
         />
 
         <StatCard
-          title="Aulas no Mês"
+          title="Aulas Cadastradas no Mês"
           value={`${aulasMinistradas} / ${aulasPrevistasMes}`}
           icon={Calendar}
           variant="info"
-          badge={`${pctAulasConcluidas}% da Grade`}
+          badge={`${pctAulasConcluidas}% das aulas cadastradas`}
           progress={pctAulasConcluidas}
-          trend="2 aulas restantes para fechar o ciclo"
-          trendType="positive"
-          target="Grade em dia"
+          trend={`${Math.max(0, aulasPrevistasMes - aulasMinistradas)} aulas previstas ainda não realizadas`}
+          trendType="neutral"
+          target="Conforme aulas cadastradas no mês"
         />
 
         <StatCard
           title="Presença Média"
-          value="87%"
+          value={taxaPresenca === null ? "Sem dados" : `${taxaPresenca}%`}
           icon={Award}
           variant="success"
-          badge="Alto Engajamento"
-          progress={87}
-          trend="+4% em relação ao mês anterior"
-          trendType="positive"
+          badge="Chamadas registradas"
+          progress={taxaPresenca ?? 0}
+          trend={`${presencasDaTurma.length} registros de presença`}
+          trendType="neutral"
           target="Meta individual: ≥ 80%"
         />
 
         <StatCard
-          title="Previsão de Repasse"
-          value={mostrarFinanceiro ? `R$ ${estimativaRepasse.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "R$ ••••••"}
+          title="Repasse do Instrutor"
+          value="Sem cálculo"
           icon={DollarSign}
           variant="purple"
-          badge="Estimativa do Mês"
-          trend="50% da receita das suas turmas"
+          badge="Regra pendente"
+          trend="Definir regra de repasse antes de exibir valores"
           trendType="neutral"
-          target={
-            <button
-              onClick={() => setMostrarFinanceiro(!mostrarFinanceiro)}
-              className="flex items-center gap-1 text-[11px] text-purple-300 hover:text-white underline cursor-pointer"
-            >
-              {mostrarFinanceiro ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-              {mostrarFinanceiro ? "Ocultar" : "Revelar"}
-            </button>
-          }
         />
       </div>
 
@@ -201,11 +191,12 @@ export default function DashboardInstrutorView() {
               </p>
             </div>
             <span className="text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20">
-              Média 87%
+              {taxaPresenca === null ? "Sem chamadas" : `Média ${taxaPresenca}%`}
             </span>
           </div>
 
-          <ResponsiveContainer width="100%" height={230}>
+          {frequenciaHistorico.length === 0 && <p className="text-xs text-muted-foreground py-6">Ainda não há presenças registradas para as turmas deste instrutor.</p>}
+          {frequenciaHistorico.length > 0 && <ResponsiveContainer width="100%" height={230}>
             <LineChart data={frequenciaHistorico}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
               <XAxis dataKey="data" tick={{ fill: "#d4d4d8", fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -221,10 +212,10 @@ export default function DashboardInstrutorView() {
                 activeDot={{ r: 6, stroke: "#fff", strokeWidth: 2 }}
               />
             </LineChart>
-          </ResponsiveContainer>
+          </ResponsiveContainer>}
 
           <div className="pt-2 border-t border-white/5 flex items-center justify-between text-xs text-muted-foreground">
-            <span>Sessões com maior assiduidade: Terças e Quintas</span>
+            <span>Últimas chamadas registradas</span>
             <Link to="/aulas" className="text-primary hover:underline flex items-center gap-1 text-[11px] font-medium">
               Grade Completa <ArrowUpRight className="w-3 h-3" />
             </Link>
@@ -233,23 +224,23 @@ export default function DashboardInstrutorView() {
 
         {/* Gauge de Assiduidade & Bullet Progress (5 Colunas) */}
         <div className="lg:col-span-5 space-y-4">
-          <RadialGauge
+          {taxaPresenca === null ? <p className="text-xs text-muted-foreground">Assiduidade disponível após registrar chamadas.</p> : <RadialGauge
             title="Termômetro de Assiduidade"
             subtitle="Frequência média dos seus alunos"
-            value={87}
+            value={taxaPresenca}
             target={80}
             targetLabel="Meta"
             unit="%"
-            statusText="Excelente Desempenho"
-          />
+            statusText="Conforme chamadas registradas"
+          />}
 
-          <BulletProgressBar
-            label="Meta de Aulas no Mês"
-            sublabel="Aulas realizadas vs plano da modalidade"
+          {aulasPrevistasMes > 0 && <BulletProgressBar
+            label="Aulas Cadastradas no Mês"
+            sublabel="Realizadas entre as aulas registradas"
             actual={aulasMinistradas}
             target={aulasPrevistasMes}
             unit="aulas"
-          />
+          />}
         </div>
       </div>
 
@@ -270,6 +261,7 @@ export default function DashboardInstrutorView() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {alunosEmAtencao.length === 0 && <p className="text-xs text-muted-foreground">Nenhuma falta registrada nas turmas deste instrutor.</p>}
           {alunosEmAtencao.map(a => (
             <div
               key={a.id}

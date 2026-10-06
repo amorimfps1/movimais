@@ -59,7 +59,7 @@ const TABS: Array<{
   {
     id: "comunicacao",
     label: "Comunicação",
-    sublabel: "Aquisição, Leads & NPS",
+    sublabel: "Aquisição e interessados",
     icon: Megaphone,
     badge: "Marketing",
     color: "text-sky-400",
@@ -84,8 +84,8 @@ export default function Dashboard() {
       {/* CABEÇALHO COM AÇÕES RÁPIDAS */}
       <PageHeader
         title="Painel de Inteligência & KPIs"
-        description="Centro de monitoramento operacional, pedagógico e financeiro do MOVI+ (~500 alunos)"
-        badge="Ao Vivo"
+        description="Dados registrados de alunos, turmas, presenças e pagamentos"
+        badge="Registros"
         action={
           <div className="flex items-center gap-2 flex-wrap">
             <Link to="/alunos">

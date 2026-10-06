@@ -103,8 +103,8 @@ describe('FinanceiroPage Component', () => {
     );
 
     expect(screen.getByText('Dashboard Financeiro')).toBeInTheDocument();
-    expect(screen.getByText('Receita do Mês Atual')).toBeInTheDocument();
-    expect(screen.getByText('Repasse a Professores (Mês)')).toBeInTheDocument();
-    expect(screen.getByText('Taxas de Matrícula (Mês)')).toBeInTheDocument();
+    expect(screen.getByText('Receita Liquidada (Mês Atual)')).toBeInTheDocument();
+    expect(screen.getByText('Base de Repasse a Professores')).toBeInTheDocument();
+    expect(screen.getByText('Taxas & Outras Receitas')).toBeInTheDocument();
   });
 });
